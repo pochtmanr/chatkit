@@ -1,6 +1,7 @@
 -- =====================================================================
 -- holylabs-chat-sdk · initial schema
--- Run this once in Supabase Dashboard → SQL Editor (project uhpuqiptxcjluwsetoev)
+-- Run this once in Supabase Dashboard → SQL Editor (in whatever project
+-- your NEXT_PUBLIC_SUPABASE_URL points at — there is no hardcoded ref).
 -- All chat data lives here. Multi-tenant via tenant_id; auth via Supabase
 -- Auth (a tenant 'owner' is a row in auth.users).
 -- =====================================================================

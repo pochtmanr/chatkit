@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HolyLabs Chat",
+  title: "TinyChat",
   description: "Drop-in chat infrastructure for delivery and marketplace apps.",
 };
 

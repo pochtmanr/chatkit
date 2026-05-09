@@ -7,7 +7,7 @@ export default function LandingPage() {
       <header className="sticky top-0 z-10 backdrop-blur bg-white/70 dark:bg-zinc-950/70 border-b border-zinc-200/60 dark:border-zinc-800/60">
         <div className="mx-auto max-w-6xl px-6 h-14 flex items-center justify-between">
           <Link href="/" className="font-semibold tracking-tight">
-            HolyLabs <span className="text-zinc-400">·</span> Chat
+            TinyChat
           </Link>
           <nav className="flex items-center gap-6 text-sm">
             <a href="#features" className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100">Features</a>
@@ -122,7 +122,7 @@ export default function LandingPage() {
 
       <footer className="mx-auto max-w-6xl px-6 py-10 text-sm text-zinc-500 border-t border-zinc-200/60 dark:border-zinc-800/60">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <span>© {new Date().getFullYear()} HolyLabs</span>
+          <span>© {new Date().getFullYear()} TinyChat</span>
           <div className="flex items-center gap-6">
             <Link href="/login" className="hover:text-zinc-900 dark:hover:text-zinc-100">
               Sign in

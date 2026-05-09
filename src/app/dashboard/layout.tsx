@@ -34,7 +34,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <div className="min-h-dvh grid grid-cols-[240px_1fr] bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
       <aside className="border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 flex flex-col">
         <Link href="/dashboard" className="px-5 h-14 flex items-center font-semibold tracking-tight">
-          HolyLabs <span className="text-zinc-400 mx-1">·</span> Chat
+          TinyChat
         </Link>
 
         {tenant && (

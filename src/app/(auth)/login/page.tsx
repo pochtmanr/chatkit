@@ -22,7 +22,7 @@ export default async function LoginPage({
       <div className="w-full max-w-sm rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 shadow-sm flex flex-col gap-4">
         <div className="space-y-1">
           <h1 className="text-xl font-semibold tracking-tight">Sign in</h1>
-          <p className="text-sm text-zinc-500">Welcome back to HolyLabs Chat.</p>
+          <p className="text-sm text-zinc-500">Welcome back to TinyChat.</p>
         </div>
         <form action={signInWithGoogleAction}>
           <input type="hidden" name="next" value={next} />
