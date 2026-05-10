@@ -51,10 +51,11 @@ export async function GET(request: NextRequest) {
     // Tickets-based bridge: we create a ticket per chat conversation
     // and append each follow-up message as a note engagement on that
     // ticket. The legacy `tickets` scope covers both create-ticket and
-    // attach-note-to-ticket operations on every paid tier. Sticking
-    // with it (rather than the granular crm.objects.tickets.*) keeps
-    // the HubSpot app's required-scope list short.
-    scope: "oauth tickets",
+    // attach-note-to-ticket operations on every paid tier.
+    //
+    // crm.objects.owners.read is needed for the owner-picker dropdown
+    // in /dashboard/settings — without it /crm/v3/owners returns 403.
+    scope: "oauth tickets crm.objects.owners.read",
     state: tenant.id,
   });
   return NextResponse.redirect(
