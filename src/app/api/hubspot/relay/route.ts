@@ -74,13 +74,13 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { threadId } = await sendMessageToHubSpot({
+    const { ticketId } = await sendMessageToHubSpot({
       tenantId: tenant.id,
       conversationId: payload.conversation_id,
       message: payload.message,
       fromUser: payload.from_user ?? {},
     });
-    return NextResponse.json({ ok: true, hubspot_thread_id: threadId });
+    return NextResponse.json({ ok: true, hubspot_ticket_id: ticketId });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "unknown";
     return NextResponse.json({ error: msg }, { status: 502 });

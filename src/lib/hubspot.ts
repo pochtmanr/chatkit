@@ -160,113 +160,137 @@ export async function getPortalInfo(accessToken: string): Promise<{
   };
 }
 
-/** Send a chat message into HubSpot. If the conversation hasn't been
- *  bridged yet, this also creates the HubSpot thread and writes the
- *  mapping row.
+/** Bridge a chat message into HubSpot.
  *
- *  Returns the HubSpot thread id so the caller can store it on the
- *  conversation record. */
+ *  Strategy: each chat conversation maps to one HubSpot ticket. The
+ *  first message creates the ticket; every subsequent message gets
+ *  attached as a `Note` engagement on that same ticket so the support
+ *  rep sees a chronological log inside the ticket view.
+ *
+ *  Why tickets instead of Conversations Inbox: HubSpot's Conversations
+ *  API doesn't allow programmatic thread creation — threads are owned
+ *  by Channels (Live Chat, Email, etc.) which won't accept arbitrary
+ *  external messages without a Custom Channel Connector setup. Tickets
+ *  are first-class CRM objects with full create/append support on
+ *  every paid HubSpot tier, so this is the path that actually works.
+ *
+ *  Returns the HubSpot ticket id. */
 export async function sendMessageToHubSpot(args: {
   tenantId: string;
   conversationId: string;
   /** Text body of the chat message. */
   message: string;
-  /** End-user identity. HubSpot needs an email or a deliveryIdentifier
-   *  to attribute the message to a contact. */
+  /** End-user identity. Used in the ticket subject and to associate
+   *  with a HubSpot contact when an email is present. */
   fromUser: { email?: string; name?: string };
-}): Promise<{ threadId: string }> {
+}): Promise<{ ticketId: string }> {
   const service = getServiceClient();
+  const accessToken = await getValidAccessToken(args.tenantId);
 
+  // Already bridged? Append as a note.
   const { data: link } = await service
     .from("conversation_hubspot_links")
-    .select("hubspot_thread_id")
+    .select("hubspot_ticket_id")
     .eq("tenant_id", args.tenantId)
     .eq("conversation_id", args.conversationId)
     .maybeSingle();
-
-  const accessToken = await getValidAccessToken(args.tenantId);
-
-  if (link) {
-    await postToThread(accessToken, link.hubspot_thread_id, args.message);
-    return { threadId: link.hubspot_thread_id };
+  if (link?.hubspot_ticket_id) {
+    await appendNoteToTicket(accessToken, link.hubspot_ticket_id, args);
+    return { ticketId: link.hubspot_ticket_id };
   }
 
-  // First time we're bridging this conversation — create a thread.
-  const { data: tenant } = await service
-    .from("tenants")
-    .select("hubspot_inbox_id")
-    .eq("id", args.tenantId)
-    .single();
-  if (!tenant?.hubspot_inbox_id) {
-    throw new Error("tenant has no HubSpot inbox configured");
-  }
-
-  const thread = await createThread(accessToken, {
-    inboxId: tenant.hubspot_inbox_id,
-    subject: `Chat from ${args.fromUser.name ?? args.fromUser.email ?? "user"}`,
-    fromEmail: args.fromUser.email,
-    message: args.message,
-  });
-
+  // First message in this conversation — create a ticket.
+  const ticket = await createTicket(accessToken, args);
   await service.from("conversation_hubspot_links").insert({
     tenant_id: args.tenantId,
     conversation_id: args.conversationId,
-    hubspot_thread_id: thread.id,
+    hubspot_ticket_id: ticket.id,
   });
-  return { threadId: thread.id };
+  return { ticketId: ticket.id };
 }
 
-async function postToThread(accessToken: string, threadId: string, text: string) {
-  const res = await fetch(
-    `${HUBSPOT_API}/conversations/v3/conversations/threads/${encodeURIComponent(threadId)}/messages`,
-    {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${accessToken}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        type: "MESSAGE",
-        text,
-        senderActorId: "V-app", // visitor
-      }),
-    },
-  );
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`HubSpot post-message failed (${res.status}): ${txt}`);
-  }
-}
-
-async function createThread(
+async function createTicket(
   accessToken: string,
   args: {
-    inboxId: string;
-    subject: string;
-    fromEmail?: string;
     message: string;
+    fromUser: { email?: string; name?: string };
   },
 ): Promise<{ id: string }> {
-  const res = await fetch(`${HUBSPOT_API}/conversations/v3/conversations/threads`, {
+  const subjectName = args.fromUser.name ?? args.fromUser.email ?? "user";
+  const res = await fetch(`${HUBSPOT_API}/crm/v3/objects/tickets`, {
     method: "POST",
     headers: {
       authorization: `Bearer ${accessToken}`,
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      inboxId: args.inboxId,
-      subject: args.subject,
-      visitor: args.fromEmail
-        ? { email: args.fromEmail }
-        : { deliveryIdentifier: { type: "VISITOR_ID", value: "anonymous" } },
-      messages: [{ type: "MESSAGE", text: args.message }],
+      properties: {
+        subject: `Chat from ${subjectName}`,
+        // HubSpot stores the initial message in `content`; subsequent
+        // messages go in as separate Note engagements.
+        content: prefixMessage(args.message, args.fromUser),
+        // Required-ish: every ticket needs to land in a pipeline+stage.
+        // "0" is the default Support Pipeline, "1" is its first stage
+        // ("New") on every fresh HubSpot account. If the tenant has
+        // customized their pipelines we may need to surface this in
+        // settings, but defaults work for the common case.
+        hs_pipeline: "0",
+        hs_pipeline_stage: "1",
+        hs_ticket_priority: "MEDIUM",
+      },
     }),
   });
   if (!res.ok) {
     const txt = await res.text();
-    throw new Error(`HubSpot create-thread failed (${res.status}): ${txt}`);
+    throw new Error(`HubSpot create-ticket failed (${res.status}): ${txt}`);
   }
-  return res.json();
+  return res.json() as Promise<{ id: string }>;
+}
+
+async function appendNoteToTicket(
+  accessToken: string,
+  ticketId: string,
+  args: {
+    message: string;
+    fromUser: { email?: string; name?: string };
+  },
+) {
+  // Notes are CRM engagements. We create a note with the message body
+  // and associate it to the ticket — that surfaces it inline in the
+  // ticket's activity timeline, where reps actually look.
+  const res = await fetch(`${HUBSPOT_API}/crm/v3/objects/notes`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      properties: {
+        hs_note_body: prefixMessage(args.message, args.fromUser),
+        hs_timestamp: Date.now(),
+      },
+      associations: [
+        {
+          to: { id: ticketId },
+          // 228 = note → ticket (HubSpot's standard association type).
+          types: [{ associationCategory: "HUBSPOT_DEFINED", associationTypeId: 228 }],
+        },
+      ],
+    }),
+  });
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`HubSpot append-note failed (${res.status}): ${txt}`);
+  }
+}
+
+/** Prefix the message body with the sender's name/email so the rep
+ *  sees who said what when scanning the ticket timeline. */
+function prefixMessage(text: string, from: { email?: string; name?: string }): string {
+  const who = from.name && from.email
+    ? `${from.name} <${from.email}>`
+    : from.name ?? from.email ?? "Anonymous";
+  return `**${who}**\n\n${text}`;
 }
 
 /** Verify that an inbound webhook came from HubSpot. HubSpot signs each

@@ -48,9 +48,13 @@ export async function GET(request: NextRequest) {
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: `${origin}/api/hubspot/oauth/callback`,
-    // Minimum useful scope set: read inboxes + read/write threads.
-    // Add `tickets` if you also want to create Service Hub tickets.
-    scope: "conversations.read conversations.write oauth",
+    // Tickets-based bridge: we create a ticket per chat conversation
+    // and append each follow-up message as a note engagement on that
+    // ticket. The legacy `tickets` scope covers both create-ticket and
+    // attach-note-to-ticket operations on every paid tier. Sticking
+    // with it (rather than the granular crm.objects.tickets.*) keeps
+    // the HubSpot app's required-scope list short.
+    scope: "oauth tickets",
     state: tenant.id,
   });
   return NextResponse.redirect(

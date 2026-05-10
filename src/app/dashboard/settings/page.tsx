@@ -53,18 +53,6 @@ export default async function SettingsPage({
     revalidatePath("/dashboard/settings");
   }
 
-  async function saveHubSpotInbox(formData: FormData) {
-    "use server";
-    if (!tenant) return;
-    const inboxId = String(formData.get("hubspot_inbox_id") ?? "").trim() || null;
-    const service = getServiceClient();
-    await service
-      .from("tenants")
-      .update({ hubspot_inbox_id: inboxId })
-      .eq("id", tenant.id);
-    revalidatePath("/dashboard/settings");
-  }
-
   if (!tenant) {
     return <p className="text-sm text-zinc-500">No workspace found.</p>;
   }
@@ -119,8 +107,9 @@ export default async function SettingsPage({
           <div>
             <h2 className="text-lg font-semibold tracking-tight">HubSpot</h2>
             <p className="mt-1 text-sm text-zinc-500">
-              Mirror chat conversations into a HubSpot Conversations Inbox.
-              Replies from HubSpot land back in the chat thread automatically.
+              Mirror chat conversations into HubSpot tickets. Each chat
+              session becomes one ticket; follow-up messages land as notes
+              on that ticket.
             </p>
           </div>
           {hubspotConnected ? (
@@ -136,7 +125,8 @@ export default async function SettingsPage({
 
         {hubspotStatus === "connected" && (
           <p className="text-sm text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg px-3 py-2">
-            HubSpot connected. Set your inbox ID below to start routing messages.
+            HubSpot connected. New chat conversations will create tickets
+            in your Service pipeline.
           </p>
         )}
         {hubspotError && (
@@ -151,26 +141,6 @@ export default async function SettingsPage({
               Portal:{" "}
               <span className="font-mono">{tenant.hubspot_portal_id}</span>
             </div>
-            <form action={saveHubSpotInbox} className="space-y-3">
-              <label className="block text-sm">
-                Inbox ID
-                <input
-                  name="hubspot_inbox_id"
-                  defaultValue={tenant.hubspot_inbox_id ?? ""}
-                  placeholder="e.g. 12345"
-                  className="mt-1 w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent px-3 py-2 text-sm font-mono"
-                />
-                <span className="mt-1 block text-xs text-zinc-500">
-                  Find it in HubSpot → Inbox settings → URL ends in <code>/inbox/{`{id}`}</code>.
-                </span>
-              </label>
-              <button
-                type="submit"
-                className="rounded-lg bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 text-white px-4 py-2 text-sm font-medium"
-              >
-                Save inbox
-              </button>
-            </form>
             <form action={disconnectHubSpot}>
               <button
                 type="submit"
