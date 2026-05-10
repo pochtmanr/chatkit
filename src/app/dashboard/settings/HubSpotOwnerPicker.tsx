@@ -46,11 +46,36 @@ export function HubSpotOwnerPicker({
     };
   }, []);
 
+  // No owners scope (403 / MISSING_SCOPES) → fall back to a manual
+  // owner-id text input. The user can find the id in the HubSpot URL
+  // when viewing their own user record under Settings → Users.
   if (error) {
     return (
-      <p className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">
-        Couldn&apos;t load HubSpot owners: {error}
-      </p>
+      <form action={saveAction} className="space-y-3">
+        <label className="block text-sm">
+          HubSpot owner ID
+          <input
+            name="hubspot_owner_id"
+            defaultValue={initialOwnerId ?? ""}
+            placeholder="e.g. 12345678"
+            inputMode="numeric"
+            className="mt-1 w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent px-3 py-2 text-sm font-mono"
+          />
+          <span className="mt-1 block text-xs text-zinc-500">
+            Couldn&apos;t auto-fetch the user list (your HubSpot tier
+            doesn&apos;t expose <code>owners.read</code>). Paste your
+            HubSpot user id manually — find it under
+            Settings → Users → click your row, the URL ends in <code>/users/&lt;id&gt;</code>.
+            Leave blank to create unassigned tickets.
+          </span>
+        </label>
+        <button
+          type="submit"
+          className="rounded-lg bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 text-white px-4 py-2 text-sm font-medium"
+        >
+          Save owner
+        </button>
+      </form>
     );
   }
 

@@ -48,13 +48,16 @@ export async function GET(request: NextRequest) {
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: `${origin}/api/hubspot/oauth/callback`,
-    // Granular tickets scopes — broader compatibility with Free CRM
-    // tiers than the legacy `tickets` scope, which sometimes triggers
-    // a "scopes mismatch" rejection on accounts without Service Hub.
-    // Owner picker is gated behind crm.objects.owners.read; if your
-    // HubSpot app can't grant that, the settings page falls back to
-    // a manual owner-id input, so it's safe to drop.
-    scope: "oauth crm.objects.tickets.read crm.objects.tickets.write",
+    // Tickets-based bridge: we create a ticket per chat conversation
+    // and append each follow-up message as a note on that ticket.
+    // The legacy `tickets` scope is what works on Free CRM tiers and
+    // covers both create-ticket and attach-note operations.
+    //
+    // We deliberately don't request crm.objects.owners.read here —
+    // that scope is gated behind paid tiers on many HubSpot accounts
+    // and triggers a "scopes mismatch" install rejection. The settings
+    // page falls back to a manual owner-id text input instead.
+    scope: "oauth tickets",
     state: tenant.id,
   });
   return NextResponse.redirect(
