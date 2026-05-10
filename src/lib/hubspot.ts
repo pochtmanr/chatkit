@@ -201,11 +201,21 @@ export async function sendMessageToHubSpot(args: {
 
   // First message in this conversation — create a ticket.
   const ticket = await createTicket(accessToken, args);
-  await service.from("conversation_hubspot_links").insert({
-    tenant_id: args.tenantId,
-    conversation_id: args.conversationId,
-    hubspot_ticket_id: ticket.id,
-  });
+  const { error: linkErr } = await service
+    .from("conversation_hubspot_links")
+    .insert({
+      tenant_id: args.tenantId,
+      conversation_id: args.conversationId,
+      hubspot_ticket_id: ticket.id,
+    });
+  // If the link insert fails (e.g. migration 0003 not applied so
+  // hubspot_thread_id is still NOT NULL), surface it so the caller
+  // sees a real error instead of getting duplicate tickets on retry.
+  if (linkErr) {
+    throw new Error(
+      `created HubSpot ticket ${ticket.id} but failed to write link row: ${linkErr.message}`,
+    );
+  }
   return { ticketId: ticket.id };
 }
 
