@@ -134,7 +134,11 @@ export async function exchangeCodeForTokens(
 }
 
 /** Get HubSpot account/portal id for a fresh token. We need this to
- *  build deep-links and to identify which account the tenant connected. */
+ *  build deep-links and to identify which account the tenant connected.
+ *
+ *  Note: HubSpot's UI calls this "Portal ID" but the API field is
+ *  `hub_id`. We translate at the boundary so callers see the friendlier
+ *  name. */
 export async function getPortalInfo(accessToken: string): Promise<{
   portal_id: number;
   user_id: number;
@@ -144,7 +148,16 @@ export async function getPortalInfo(accessToken: string): Promise<{
     `${HUBSPOT_API}/oauth/v1/access-tokens/${encodeURIComponent(accessToken)}`,
   );
   if (!res.ok) throw new Error(`portal info fetch failed: ${res.status}`);
-  return res.json();
+  const raw = (await res.json()) as {
+    hub_id?: number;
+    user_id?: number;
+    hub_domain?: string;
+  };
+  return {
+    portal_id: raw.hub_id ?? 0,
+    user_id: raw.user_id ?? 0,
+    hub_domain: raw.hub_domain ?? "",
+  };
 }
 
 /** Send a chat message into HubSpot. If the conversation hasn't been
