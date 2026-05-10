@@ -25,9 +25,21 @@ export interface TenantHubSpotState {
   hubspot_webhook_secret: string | null;
 }
 
+/** A Private App access token from HubSpot's UI looks like
+ *  `<region>-<uuid-without-dashes-grouped>` and never expires. Detect that
+ *  format so we skip the refresh dance — Private Apps don't have refresh
+ *  tokens or short-lived access tokens at all. */
+function isPrivateAppToken(token: string | null | undefined): boolean {
+  if (!token) return false;
+  return /^(na|na2|eu|eu1|ap|au)\d?-[a-f0-9-]+$/i.test(token);
+}
+
 /** Returns a valid access token for the tenant, refreshing it first if
  *  it's within 60s of expiry. Throws if the tenant has never connected
- *  HubSpot or the refresh fails. */
+ *  HubSpot or the refresh fails.
+ *
+ *  Private App tokens (set manually instead of via OAuth) are returned
+ *  as-is — they don't expire and have no refresh token. */
 export async function getValidAccessToken(tenantId: string): Promise<string> {
   const service = getServiceClient();
   const { data: tenant, error } = await service
@@ -38,6 +50,12 @@ export async function getValidAccessToken(tenantId: string): Promise<string> {
     .eq("id", tenantId)
     .single();
   if (error || !tenant) throw new Error(`tenant ${tenantId} not found`);
+
+  // Private App fast-path: no refresh, ever.
+  if (isPrivateAppToken(tenant.hubspot_access_token)) {
+    return tenant.hubspot_access_token!;
+  }
+
   if (!tenant.hubspot_refresh_token) {
     throw new Error(`tenant ${tenantId} has not connected HubSpot`);
   }
