@@ -199,8 +199,18 @@ export async function sendMessageToHubSpot(args: {
     return { ticketId: link.hubspot_ticket_id };
   }
 
-  // First message in this conversation — create a ticket.
-  const ticket = await createTicket(accessToken, args);
+  // First message in this conversation — create a ticket. Look up
+  // the configured owner so the ticket is assigned to a real user
+  // (otherwise HubSpot fires no notifications on creation).
+  const { data: tenantOwner } = await service
+    .from("tenants")
+    .select("hubspot_owner_id")
+    .eq("id", args.tenantId)
+    .single();
+  const ticket = await createTicket(accessToken, {
+    ...args,
+    ownerId: tenantOwner?.hubspot_owner_id ?? undefined,
+  });
   const { error: linkErr } = await service
     .from("conversation_hubspot_links")
     .insert({
@@ -224,31 +234,36 @@ async function createTicket(
   args: {
     message: string;
     fromUser: { email?: string; name?: string };
+    /** Optional HubSpot owner id. When set, the ticket is assigned on
+     *  creation, which is what fires HubSpot's "ticket assigned to me"
+     *  notifications for the rep. */
+    ownerId?: string;
   },
 ): Promise<{ id: string }> {
   const subjectName = args.fromUser.name ?? args.fromUser.email ?? "user";
+  const properties: Record<string, string> = {
+    subject: `Chat from ${subjectName}`,
+    // HubSpot stores the initial message in `content`; subsequent
+    // messages go in as separate Note engagements.
+    content: prefixMessage(args.message, args.fromUser),
+    // Required-ish: every ticket needs to land in a pipeline+stage.
+    // "0" is the default Support Pipeline, "1" is its first stage
+    // ("New") on every fresh HubSpot account. If the tenant has
+    // customized their pipelines we may need to surface this in
+    // settings, but defaults work for the common case.
+    hs_pipeline: "0",
+    hs_pipeline_stage: "1",
+    hs_ticket_priority: "MEDIUM",
+  };
+  if (args.ownerId) properties.hubspot_owner_id = args.ownerId;
+
   const res = await fetch(`${HUBSPOT_API}/crm/v3/objects/tickets`, {
     method: "POST",
     headers: {
       authorization: `Bearer ${accessToken}`,
       "content-type": "application/json",
     },
-    body: JSON.stringify({
-      properties: {
-        subject: `Chat from ${subjectName}`,
-        // HubSpot stores the initial message in `content`; subsequent
-        // messages go in as separate Note engagements.
-        content: prefixMessage(args.message, args.fromUser),
-        // Required-ish: every ticket needs to land in a pipeline+stage.
-        // "0" is the default Support Pipeline, "1" is its first stage
-        // ("New") on every fresh HubSpot account. If the tenant has
-        // customized their pipelines we may need to surface this in
-        // settings, but defaults work for the common case.
-        hs_pipeline: "0",
-        hs_pipeline_stage: "1",
-        hs_ticket_priority: "MEDIUM",
-      },
-    }),
+    body: JSON.stringify({ properties }),
   });
   if (!res.ok) {
     const txt = await res.text();

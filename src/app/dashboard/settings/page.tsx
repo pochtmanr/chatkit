@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { getServerClient, getServiceClient } from "@/lib/supabase/server";
+import { HubSpotOwnerPicker } from "./HubSpotOwnerPicker";
 
 export default async function SettingsPage({
   searchParams,
@@ -14,7 +15,7 @@ export default async function SettingsPage({
   const { data: tenants } = await supabase
     .from("tenants")
     .select(
-      "id, name, email_from, plan, integration_type, hubspot_portal_id, hubspot_inbox_id",
+      "id, name, email_from, plan, integration_type, hubspot_portal_id, hubspot_owner_id",
     )
     .eq("owner_user_id", user!.id)
     .limit(1);
@@ -47,8 +48,20 @@ export default async function SettingsPage({
         hubspot_refresh_token: null,
         hubspot_token_expires_at: null,
         hubspot_portal_id: null,
-        hubspot_inbox_id: null,
+        hubspot_owner_id: null,
       })
+      .eq("id", tenant.id);
+    revalidatePath("/dashboard/settings");
+  }
+
+  async function saveHubSpotOwner(formData: FormData) {
+    "use server";
+    if (!tenant) return;
+    const ownerId = String(formData.get("hubspot_owner_id") ?? "").trim() || null;
+    const service = getServiceClient();
+    await service
+      .from("tenants")
+      .update({ hubspot_owner_id: ownerId })
       .eq("id", tenant.id);
     revalidatePath("/dashboard/settings");
   }
@@ -141,6 +154,10 @@ export default async function SettingsPage({
               Portal:{" "}
               <span className="font-mono">{tenant.hubspot_portal_id}</span>
             </div>
+            <HubSpotOwnerPicker
+              initialOwnerId={tenant.hubspot_owner_id ?? null}
+              saveAction={saveHubSpotOwner}
+            />
             <form action={disconnectHubSpot}>
               <button
                 type="submit"
