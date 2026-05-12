@@ -318,6 +318,42 @@ function prefixMessage(text: string, from: { email?: string; name?: string }): s
   return `**${who}**\n\n${text}`;
 }
 
+/** Shape of a HubSpot conversations-v3 message. We only model the fields
+ *  we use; HubSpot returns plenty more. */
+export interface HubSpotThreadMessage {
+  id: string;
+  type: string; // 'MESSAGE' for plain replies; agent comments/notes are 'COMMENT'
+  direction: 'INCOMING' | 'OUTGOING';
+  text?: string;
+  /** Plain-text fallback when `text` is HTML; in practice one of the two is set. */
+  richText?: string;
+  createdAt: string;
+  senders?: Array<{ actorId?: string; name?: string; deliveryIdentifier?: { value?: string } }>;
+}
+
+/** Fetch the most recent messages on a HubSpot thread. Used by the
+ *  inbound webhook to grab the body of a `conversation.newMessage` event
+ *  (the webhook payload only carries the thread id, not the message).
+ *  Returns newest-first up to `limit`.
+ */
+export async function fetchThreadMessages(
+  tenantId: string,
+  threadId: string,
+  limit = 20,
+): Promise<HubSpotThreadMessage[]> {
+  const token = await getValidAccessToken(tenantId);
+  const url = `${HUBSPOT_API}/conversations/v3/conversations/threads/${threadId}/messages?limit=${limit}&sort=-createdAt`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`HubSpot fetch-thread-messages failed (${res.status}): ${txt}`);
+  }
+  const json = (await res.json()) as { results?: HubSpotThreadMessage[] };
+  return json.results ?? [];
+}
+
 /** Verify that an inbound webhook came from HubSpot. HubSpot signs each
  *  request with HMAC-SHA256 over `method + uri + body + timestamp` keyed
  *  on the app's client secret.

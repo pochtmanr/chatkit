@@ -1,6 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getServiceClient } from "@/lib/supabase/server";
-import { verifyHubSpotSignature } from "@/lib/hubspot";
+import { fetchThreadMessages, verifyHubSpotSignature } from "@/lib/hubspot";
+import { broadcastMessage } from "@/lib/realtime";
+
+/** Sentinel sender id for messages that came back from a HubSpot agent.
+ *  Picked so it can't collide with a real user id and so the mobile SDK's
+ *  `isSelf` check (current user id vs sender id) naturally renders these
+ *  as incoming. */
+const HUBSPOT_AGENT_SENDER_ID = "hubspot-agent";
 
 /**
  * Inbound: HubSpot fires this webhook when an admin replies to a thread
@@ -85,26 +92,79 @@ export async function POST(request: NextRequest) {
     const tenantPortal = (link as unknown as LinkRow).tenants?.hubspot_portal_id;
     if (tenantPortal && tenantPortal !== portalId) continue;
 
-    // TODO: forward-to-firebase
-    // The chat data lives in Firebase, not Supabase. To complete the
-    // round-trip, initialize a Firebase Admin SDK here with the
-    // tenant's service account (or a shared one) and write the new
-    // message into the corresponding chat thread, e.g.:
-    //
-    //   await admin.firestore()
-    //     .collection('tenants').doc(link.tenant_id)
-    //     .collection('conversations').doc(link.conversation_id)
-    //     .collection('messages').add({
-    //       senderId: 'support',
-    //       message: <fetched body>,
-    //       createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    //       source: 'hubspot',
-    //     });
-    //
-    // Note: HubSpot's webhook payload only includes the thread id, not
-    // the message body. To get the body you call
-    //   GET /conversations/v3/conversations/threads/{threadId}/messages
-    // with the tenant's access token (use getValidAccessToken).
+    // HubSpot's webhook only gives us the thread id, not the message
+    // body — fetch the latest messages and forward any agent (OUTGOING)
+    // replies we haven't seen yet into our messages table. We dedupe on
+    // hubspot_message_id so redelivered webhooks don't double-post.
+    let thread: Awaited<ReturnType<typeof fetchThreadMessages>>;
+    try {
+      thread = await fetchThreadMessages(link.tenant_id, threadId, 20);
+    } catch (err) {
+      console.error(
+        `[hubspot/webhook] fetchThreadMessages failed for thread ${threadId}:`,
+        err,
+      );
+      continue;
+    }
+
+    // Only outgoing 'MESSAGE' entries are agent replies to the customer.
+    // 'COMMENT' is an internal note inside HubSpot, not visible to the
+    // user — skip those. Order is newest-first; we want oldest-first so
+    // multiple unseen replies land in chronological order.
+    const candidates = thread
+      .filter((m) => m.type === "MESSAGE" && m.direction === "OUTGOING")
+      .reverse();
+
+    for (const hsMsg of candidates) {
+      const body = hsMsg.text ?? hsMsg.richText ?? "";
+      if (!body.trim()) continue;
+
+      const { data: inserted, error: insErr } = await service
+        .from("messages")
+        .insert({
+          tenant_id: link.tenant_id,
+          conversation_id: link.conversation_id,
+          sender_id: HUBSPOT_AGENT_SENDER_ID,
+          receiver_id: null,
+          body,
+          message_type: "text",
+          hubspot_message_id: hsMsg.id,
+        })
+        .select()
+        .single();
+
+      // Duplicate (already inserted from a previous webhook) → unique
+      // index error code 23505. That's the happy path for redeliveries.
+      if (insErr) {
+        const code = (insErr as { code?: string }).code;
+        if (code !== "23505") {
+          console.error(
+            `[hubspot/webhook] insert failed for hubspot msg ${hsMsg.id}:`,
+            insErr,
+          );
+        }
+        continue;
+      }
+      if (!inserted) continue;
+
+      // Mirror what the user-facing sendMessage route does so list
+      // endpoints / preview rows stay consistent.
+      await service
+        .from("conversations")
+        .update({ last_message: body, last_at: inserted.created_at })
+        .eq("id", link.conversation_id);
+
+      // Realtime broadcast — this is what the SDK's subscribeToConversation
+      // listens to. Without it, the message only appears on next refresh.
+      try {
+        await broadcastMessage(link.conversation_id, inserted);
+      } catch (err) {
+        console.warn(
+          `[hubspot/webhook] broadcastMessage failed for msg ${inserted.id}:`,
+          err,
+        );
+      }
+    }
   }
 
   return NextResponse.json({ received: events.length });
