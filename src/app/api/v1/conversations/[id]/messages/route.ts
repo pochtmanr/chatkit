@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { authTenant, corsHeaders } from "@/lib/api-auth";
 import { getServiceClient } from "@/lib/supabase/server";
 import { sendMessageToHubSpot } from "@/lib/hubspot";
+import { broadcastMessage } from "@/lib/realtime";
 
 /**
  * GET /api/v1/conversations/:id/messages?before=…&limit=…
@@ -179,6 +180,12 @@ export async function POST(
       last_at: message.created_at,
     })
     .eq("id", conversationId);
+
+  // Fan out via Realtime so any subscribed SDK clients (other
+  // participants on this conversation) receive the new message
+  // immediately. Awaited because we'd rather pay the ~200ms now than
+  // have the message land in Postgres but not reach the recipient.
+  await broadcastMessage(conversationId, message);
 
   // HubSpot bridge — only for support conversations from non-admin
   // senders. Order chats are peer-to-peer and don't belong in tickets;
