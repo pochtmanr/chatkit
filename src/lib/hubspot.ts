@@ -354,6 +354,78 @@ export async function fetchThreadMessages(
   return json.results ?? [];
 }
 
+/** A HubSpot engagement (CRM activity) — we model only the bits needed
+ *  for routing inbound notes back into chat. The engagement object has
+ *  many more fields; see HubSpot's CRM engagements API for the rest. */
+export interface HubSpotEngagement {
+  id: string;
+  /** "NOTE" for agent-written notes on tickets, "EMAIL", "CALL", etc. */
+  type: string;
+  /** Note body — usually HTML; we strip tags before storing. */
+  body?: string;
+  /** Bare text version when available (legacy). */
+  metadata?: { body?: string };
+  createdAt?: string;
+  /** Object ids this engagement is linked to (tickets, contacts, deals). */
+  associations?: { ticketIds?: number[]; contactIds?: number[] };
+}
+
+/** Fetch a single engagement (note) from HubSpot's legacy engagements
+ *  API. The v1 API returns the body + associations together, which is
+ *  exactly what we need for the inbound webhook (`engagement.creation`
+ *  events only include the engagement id, not its contents). */
+export async function fetchEngagement(
+  tenantId: string,
+  engagementId: string,
+): Promise<HubSpotEngagement | null> {
+  const token = await getValidAccessToken(tenantId);
+  const url = `${HUBSPOT_API}/engagements/v1/engagements/${engagementId}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`HubSpot fetch-engagement failed (${res.status}): ${txt}`);
+  }
+  type V1Response = {
+    engagement?: { id?: number | string; type?: string; createdAt?: number };
+    metadata?: { body?: string };
+    associations?: { ticketIds?: number[]; contactIds?: number[] };
+  };
+  const json = (await res.json()) as V1Response;
+  if (!json.engagement) return null;
+  return {
+    id: String(json.engagement.id ?? engagementId),
+    type: json.engagement.type ?? '',
+    body: json.metadata?.body,
+    metadata: json.metadata,
+    createdAt:
+      json.engagement.createdAt != null
+        ? new Date(json.engagement.createdAt).toISOString()
+        : undefined,
+    associations: json.associations,
+  };
+}
+
+/** Strip the HTML wrapping HubSpot returns in note bodies so we store
+ *  plain text in our messages table. Keeps it minimal — full HTML →
+ *  Markdown conversion is overkill for chat notes. */
+export function stripHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>(\n)?/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 /** Verify that an inbound webhook came from HubSpot. HubSpot signs each
  *  request with HMAC-SHA256 over `method + uri + body + timestamp` keyed
  *  on the app's client secret.

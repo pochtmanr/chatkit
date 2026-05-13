@@ -1,6 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getServiceClient } from "@/lib/supabase/server";
-import { fetchThreadMessages, verifyHubSpotSignature } from "@/lib/hubspot";
+import {
+  fetchEngagement,
+  fetchThreadMessages,
+  stripHtml,
+  verifyHubSpotSignature,
+} from "@/lib/hubspot";
 import { broadcastMessage } from "@/lib/realtime";
 
 /** Sentinel sender id for messages that came back from a HubSpot agent.
@@ -69,6 +74,10 @@ export async function POST(request: NextRequest) {
 
   const service = getServiceClient();
   for (const event of events) {
+    if (event.subscriptionType === "engagement.creation") {
+      await handleEngagementCreation(service, event);
+      continue;
+    }
     if (event.subscriptionType !== "conversation.newMessage") continue;
     const threadId = event.objectId ? String(event.objectId) : null;
     const portalId = String(event.portalId);
@@ -168,4 +177,113 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({ received: events.length });
+}
+
+/** Inbound: an agent added a NOTE to a HubSpot ticket. We forward the
+ *  note's body into our chat as a message from the tenant's support
+ *  sentinel, so the user's app sees it as a normal incoming chat message
+ *  rather than having to crack open the ticket.
+ *
+ *  This is the reverse direction of `sendMessageToHubSpot` /
+ *  `appendNoteToTicket`. The outbound path puts user messages on the
+ *  ticket; this path takes agent notes back off it.
+ */
+async function handleEngagementCreation(
+  service: ReturnType<typeof getServiceClient>,
+  event: HubSpotEventBatchItem,
+): Promise<void> {
+  const engagementId = event.objectId ? String(event.objectId) : null;
+  const portalId = String(event.portalId);
+  if (!engagementId) return;
+
+  // Identify the tenant via portal id. We need it both for the API call
+  // and for the dedup unique-index scope.
+  const { data: tenant } = await service
+    .from("tenants")
+    .select("id")
+    .eq("hubspot_portal_id", portalId)
+    .maybeSingle();
+  if (!tenant) return;
+
+  // Fetch the engagement details — the webhook payload alone doesn't
+  // carry the body or associations.
+  let engagement;
+  try {
+    engagement = await fetchEngagement(tenant.id, engagementId);
+  } catch (err) {
+    console.error(
+      `[hubspot/webhook] fetchEngagement failed for ${engagementId}:`,
+      err,
+    );
+    return;
+  }
+  if (!engagement) return;
+
+  // Only NOTE engagements map to chat messages. Skip CALLs, EMAILs, etc.
+  if (engagement.type !== "NOTE") return;
+
+  // Note must be associated with a ticket we're tracking — otherwise
+  // there's no conversation to attach to.
+  const ticketIds = engagement.associations?.ticketIds ?? [];
+  if (ticketIds.length === 0) return;
+
+  for (const ticketId of ticketIds) {
+    const { data: link } = await service
+      .from("conversation_hubspot_links")
+      .select("conversation_id")
+      .eq("tenant_id", tenant.id)
+      .eq("hubspot_ticket_id", String(ticketId))
+      .maybeSingle();
+    if (!link) continue;
+
+    // sendMessageToHubSpot writes every user message as a note too, and
+    // prefixes it with "**Name**\n\n…". Skip our own outbound copy so
+    // we don't ingest the user's own messages back as agent replies.
+    const rawBody =
+      engagement.metadata?.body ?? engagement.body ?? "";
+    const text = stripHtml(rawBody);
+    if (!text.trim()) continue;
+    // Heuristic: notes we wrote start with "**…**\n\n". Agent-typed
+    // notes inside HubSpot don't have that prefix.
+    if (/^\*\*[^*]+\*\*\n/.test(text)) continue;
+
+    const { data: inserted, error: insErr } = await service
+      .from("messages")
+      .insert({
+        tenant_id: tenant.id,
+        conversation_id: link.conversation_id,
+        sender_id: HUBSPOT_AGENT_SENDER_ID,
+        receiver_id: null,
+        body: text,
+        message_type: "text",
+        hubspot_engagement_id: engagement.id,
+      })
+      .select()
+      .single();
+    if (insErr) {
+      // 23505 = unique violation → duplicate redelivery, expected.
+      if ((insErr as { code?: string }).code !== "23505") {
+        console.error(
+          `[hubspot/webhook] insert failed for engagement ${engagement.id}:`,
+          insErr,
+        );
+      }
+      continue;
+    }
+    if (!inserted) continue;
+
+    await service
+      .from("conversations")
+      .update({ last_message: text, last_at: inserted.created_at })
+      .eq("id", link.conversation_id);
+
+    try {
+      await broadcastMessage(link.conversation_id, inserted);
+    } catch (err) {
+      console.warn(
+        `[hubspot/webhook] broadcastMessage failed for engagement ${engagement.id}:`,
+        err,
+      );
+    }
+  }
 }
