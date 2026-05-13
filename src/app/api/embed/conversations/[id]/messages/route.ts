@@ -55,15 +55,32 @@ export async function GET(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Counterpart for the header.
-  const { data: counterpart } = conv.external_ref
-    ? await service
+  // Counterpart for the header. avatar_url is optional (column added
+  // in migration 0010) — wrap in a try-catch so the endpoint still
+  // works on databases where the migration hasn't been applied yet.
+  let counterpart: { user_id: string; name: string | null; email: string | null; avatar_url: string | null } | null = null;
+  if (conv.external_ref) {
+    try {
+      const { data } = await service
+        .from("chat_users")
+        .select("user_id, name, email, avatar_url")
+        .eq("tenant_id", session.tenantId)
+        .eq("user_id", conv.external_ref)
+        .maybeSingle();
+      counterpart = data ?? null;
+    } catch {
+      // Column may not exist yet; retry without avatar_url.
+      const { data } = await service
         .from("chat_users")
         .select("user_id, name, email")
         .eq("tenant_id", session.tenantId)
         .eq("user_id", conv.external_ref)
-        .maybeSingle()
-    : { data: null };
+        .maybeSingle();
+      counterpart = data
+        ? { ...data, avatar_url: null }
+        : null;
+    }
+  }
 
   return NextResponse.json({
     messages: (rows ?? []).slice().reverse(),

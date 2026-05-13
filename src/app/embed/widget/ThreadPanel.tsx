@@ -11,6 +11,13 @@ interface DbMessage {
   created_at: string;
 }
 
+interface Counterpart {
+  user_id: string;
+  name: string | null;
+  email: string | null;
+  avatar_url: string | null;
+}
+
 /**
  * Compact thread + reply input for the widget panel.
  *
@@ -31,6 +38,7 @@ export function ThreadPanel({
   onBack: () => void;
 }) {
   const [messages, setMessages] = useState<DbMessage[] | null>(null);
+  const [counterpart, setCounterpart] = useState<Counterpart | null>(null);
   const [text, setText] = useState("");
   const [isSending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,9 +57,13 @@ export function ThreadPanel({
           const data = (await res.json().catch(() => null)) as { error?: string } | null;
           throw new Error(data?.error ?? `load ${res.status}`);
         }
-        const { messages: rows } = (await res.json()) as { messages: DbMessage[] };
+        const { messages: rows, counterpart: cp } = (await res.json()) as {
+          messages: DbMessage[];
+          counterpart: Counterpart | null;
+        };
         if (cancelled) return;
         setMessages(rows);
+        setCounterpart(cp);
       } catch (err) {
         if (cancelled) return;
         setError(err instanceof Error ? err.message : "load failed");
@@ -135,9 +147,28 @@ export function ThreadPanel({
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <span className="text-xs text-zinc-600 dark:text-zinc-400 truncate">
-          Conversation #{conversationId.slice(0, 8)}
-        </span>
+        {counterpart?.avatar_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={counterpart.avatar_url}
+            alt=""
+            className="h-7 w-7 rounded-full object-cover bg-zinc-200 dark:bg-zinc-800 shrink-0"
+          />
+        ) : (
+          <div className="h-7 w-7 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-medium text-zinc-600 dark:text-zinc-400 shrink-0">
+            {(counterpart?.name || counterpart?.email || "?").slice(0, 2).toUpperCase()}
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="text-xs font-medium truncate text-zinc-900 dark:text-zinc-100">
+            {counterpart?.name || counterpart?.email || `Conversation #${conversationId.slice(0, 8)}`}
+          </div>
+          {counterpart?.email && counterpart?.name && (
+            <div className="text-[10px] text-zinc-500 truncate">
+              {counterpart.email}
+            </div>
+          )}
+        </div>
       </div>
 
       <div

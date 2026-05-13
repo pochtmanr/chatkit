@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Search } from "lucide-react";
 
 interface ConversationRow {
   id: string;
@@ -32,6 +33,31 @@ export function ConversationList({
   const [rows, setRows] = useState<ConversationRow[] | null>(null);
   const [users, setUsers] = useState<Map<string, ChatUserRow>>(new Map());
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+
+  // Filter rows by search term — matches against the displayed name,
+  // email, and the message preview. Case-insensitive substring match.
+  const filtered = useMemo(() => {
+    if (!rows) return null;
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((c) => {
+      const lookupKey =
+        c.kind === "order"
+          ? c.participants?.[0] ?? null
+          : c.external_ref;
+      const u = lookupKey ? users.get(lookupKey) : null;
+      const haystacks = [
+        u?.name,
+        u?.email,
+        c.last_message,
+        c.external_ref,
+      ]
+        .filter((s): s is string => !!s)
+        .map((s) => s.toLowerCase());
+      return haystacks.some((s) => s.includes(q));
+    });
+  }, [rows, users, search]);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,8 +108,26 @@ export function ConversationList({
   }
 
   return (
-    <ul className="divide-y divide-zinc-200 dark:divide-zinc-800 overflow-y-auto h-full">
-      {rows.map((c) => {
+    <div className="flex flex-col h-full">
+      <div className="px-3 py-2 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search conversations…"
+            className="w-full pl-8 pr-2 py-1.5 text-xs rounded-md border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100"
+          />
+        </div>
+      </div>
+      {filtered && filtered.length === 0 ? (
+        <div className="p-6 text-center text-xs text-zinc-500">
+          No matches.
+        </div>
+      ) : (
+        <ul className="divide-y divide-zinc-200 dark:divide-zinc-800 overflow-y-auto flex-1">
+          {(filtered ?? []).map((c) => {
         // Support: name comes from chat_users keyed by external_ref.
         // Order: external_ref is the order id; customer is participants[0].
         const lookupKey =
@@ -133,7 +177,9 @@ export function ConversationList({
           </li>
         );
       })}
-    </ul>
+        </ul>
+      )}
+    </div>
   );
 }
 

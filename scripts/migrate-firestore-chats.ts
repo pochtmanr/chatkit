@@ -27,6 +27,14 @@
 import { initializeApp, cert, type ServiceAccount } from "firebase-admin/app";
 import { getFirestore, type Firestore, type DocumentSnapshot } from "firebase-admin/firestore";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import WS from "ws";
+
+// Polyfill WebSocket for Node 20 (Node 22 ships a native one). Supabase
+// instantiates a realtime client even when we don't use it; without this
+// it throws on construct.
+if (typeof (globalThis as { WebSocket?: unknown }).WebSocket === "undefined") {
+  (globalThis as { WebSocket: unknown }).WebSocket = WS;
+}
 
 const ADMIN_ROLES = new Set(["super_admin", "store_admin"]);
 
@@ -133,18 +141,17 @@ async function insertMessages(
 
   if (rows.length === 0) return { inserted: 0, skipped: 0 };
 
-  // upsert on the (tenant, firestore_id) unique index. Re-runs skip.
+  // Plain insert — no firestore_id column on this schema. Per the
+  // user's request we accept that re-running the script would create
+  // duplicates; this is a one-shot.
+  const rowsNoFirestoreId = rows.map(({ firestore_id: _drop, ...rest }) => rest);
   const { data, error } = await sb
     .from("messages")
-    .upsert(rows, {
-      onConflict: "tenant_id,firestore_id",
-      ignoreDuplicates: true,
-    })
+    .insert(rowsNoFirestoreId)
     .select("id");
   if (error) throw new Error(`insert messages failed: ${error.message}`);
 
-  const inserted = data?.length ?? 0;
-  return { inserted, skipped: rows.length - inserted };
+  return { inserted: data?.length ?? 0, skipped: 0 };
 }
 
 // ---------------------------------------------------------------------
