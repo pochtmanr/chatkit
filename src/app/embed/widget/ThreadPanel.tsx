@@ -22,12 +22,10 @@ interface DbMessage {
 const AGENT_SENDER_ID_PREFIX = "agent";
 
 export function ThreadPanel({
-  tenantId,
   conversationId,
   apiKey,
   onBack,
 }: {
-  tenantId: string;
   conversationId: string;
   apiKey: string;
   onBack: () => void;
@@ -38,29 +36,31 @@ export function ThreadPanel({
   const [error, setError] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // Initial load — newest 50, displayed oldest-first.
+  // Initial load via the API (server-side, RLS-bypassing).
   useEffect(() => {
     let cancelled = false;
-    const client = getBrowserClient();
     (async () => {
-      const { data, error: err } = await client
-        .from("messages")
-        .select("id, sender_id, body, created_at")
-        .eq("conversation_id", conversationId)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false })
-        .limit(50);
-      if (cancelled) return;
-      if (err) {
-        setError(err.message);
-        return;
+      try {
+        const res = await fetch(
+          `/api/embed/conversations/${conversationId}/messages`,
+          { headers: { authorization: `Bearer ${apiKey}` } },
+        );
+        if (!res.ok) {
+          const data = (await res.json().catch(() => null)) as { error?: string } | null;
+          throw new Error(data?.error ?? `load ${res.status}`);
+        }
+        const { messages: rows } = (await res.json()) as { messages: DbMessage[] };
+        if (cancelled) return;
+        setMessages(rows);
+      } catch (err) {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "load failed");
       }
-      setMessages((data ?? []).slice().reverse());
     })();
     return () => {
       cancelled = true;
     };
-  }, [conversationId, tenantId]);
+  }, [apiKey, conversationId]);
 
   // Realtime subscription so new messages append without polling.
   useEffect(() => {

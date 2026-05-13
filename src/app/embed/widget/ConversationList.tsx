@@ -1,14 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getBrowserClient } from "@/lib/supabase/client";
 
 interface ConversationRow {
   id: string;
   external_ref: string | null;
   last_message: string | null;
   last_at: string | null;
-  participants: string[];
 }
 
 interface ChatUserRow {
@@ -18,15 +16,15 @@ interface ChatUserRow {
 }
 
 /**
- * Fetches and renders the support conversations for a tenant. Client-
- * rendered so the widget panel can update without a page reload when
- * a new message lands.
+ * Calls /api/embed/conversations server-side (RLS-bypassing) instead
+ * of querying Supabase from the browser directly — the anon role
+ * can't see most rows.
  */
 export function ConversationList({
-  tenantId,
+  apiKey,
   onOpen,
 }: {
-  tenantId: string;
+  apiKey: string;
   onOpen: (conversationId: string) => void;
 }) {
   const [rows, setRows] = useState<ConversationRow[] | null>(null);
@@ -36,40 +34,32 @@ export function ConversationList({
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const client = getBrowserClient();
-      const { data, error: err } = await client
-        .from("conversations")
-        .select("id, external_ref, last_message, last_at, participants")
-        .eq("tenant_id", tenantId)
-        .eq("kind", "support")
-        .order("last_at", { ascending: false, nullsFirst: false })
-        .limit(50);
-      if (cancelled) return;
-      if (err) {
-        setError(err.message);
-        return;
-      }
-      setRows(data ?? []);
-      // Pull display names for each conversation's counterpart.
-      const refs = (data ?? [])
-        .map((r) => r.external_ref)
-        .filter((v): v is string => !!v);
-      if (refs.length) {
-        const { data: u } = await client
-          .from("chat_users")
-          .select("user_id, name, email")
-          .eq("tenant_id", tenantId)
-          .in("user_id", refs);
+      try {
+        const res = await fetch("/api/embed/conversations", {
+          headers: { authorization: `Bearer ${apiKey}` },
+        });
+        if (!res.ok) {
+          const data = (await res.json().catch(() => null)) as { error?: string } | null;
+          throw new Error(data?.error ?? `list ${res.status}`);
+        }
+        const { conversations, users: usersData } = (await res.json()) as {
+          conversations: ConversationRow[];
+          users: ChatUserRow[];
+        };
         if (cancelled) return;
+        setRows(conversations);
         const m = new Map<string, ChatUserRow>();
-        (u ?? []).forEach((row) => m.set(row.user_id, row as ChatUserRow));
+        usersData.forEach((u) => m.set(u.user_id, u));
         setUsers(m);
+      } catch (err) {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "load failed");
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [tenantId]);
+  }, [apiKey]);
 
   if (error) {
     return (
@@ -79,9 +69,7 @@ export function ConversationList({
     );
   }
   if (!rows) {
-    return (
-      <div className="p-4 text-xs text-zinc-500">Loading…</div>
-    );
+    return <div className="p-4 text-xs text-zinc-500">Loading…</div>;
   }
   if (rows.length === 0) {
     return (

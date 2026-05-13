@@ -22,13 +22,7 @@ import { ThreadPanel } from "./ThreadPanel";
  */
 type View = "closed" | "list" | "thread";
 
-export function WidgetShell({
-  apiKey,
-  tenantId,
-}: {
-  apiKey: string;
-  tenantId: string;
-}) {
+export function WidgetShell({ apiKey }: { apiKey: string }) {
   const [view, setView] = useState<View>("closed");
   const [openConvId, setOpenConvId] = useState<string | null>(null);
 
@@ -84,13 +78,12 @@ export function WidgetShell({
           <div className="flex-1 min-h-0">
             {view === "list" && (
               <ConversationList
-                tenantId={tenantId}
+                apiKey={apiKey}
                 onOpen={openThread}
               />
             )}
             {view === "thread" && openConvId && (
               <ThreadPanel
-                tenantId={tenantId}
                 conversationId={openConvId}
                 apiKey={apiKey}
                 onBack={backToList}

@@ -18,9 +18,8 @@ export default async function WidgetPage({
   searchParams: Promise<{ key?: string }>;
 }) {
   const { key } = await searchParams;
-  let session;
   try {
-    session = await verifyEmbedKey(key);
+    await verifyEmbedKey(key);
   } catch (err) {
     return (
       <div className="min-h-dvh flex items-center justify-center bg-white p-4 text-xs text-red-600">
@@ -29,5 +28,5 @@ export default async function WidgetPage({
     );
   }
 
-  return <WidgetShell apiKey={key!} tenantId={session.tenantId} />;
+  return <WidgetShell apiKey={key!} />;
 }
