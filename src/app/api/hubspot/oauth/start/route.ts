@@ -48,16 +48,19 @@ export async function GET(request: NextRequest) {
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: `${origin}/api/hubspot/oauth/callback`,
-    // Tickets-based bridge: we create a ticket per chat conversation
-    // and append each follow-up message as a note on that ticket.
-    // The legacy `tickets` scope is what works on Free CRM tiers and
-    // covers both create-ticket and attach-note operations.
+    // Conversations API mode: each chat conversation maps to a HubSpot
+    // thread under a per-tenant ChannelAccount in a Custom Channel.
+    //  - conversations.read/write: publish incoming messages + read
+    //    thread history
+    //  - conversations.custom_channels.read/write: register the per-
+    //    tenant ChannelAccount under the shared Custom Channel
     //
     // We deliberately don't request crm.objects.owners.read here —
     // that scope is gated behind paid tiers on many HubSpot accounts
     // and triggers a "scopes mismatch" install rejection. The settings
     // page falls back to a manual owner-id text input instead.
-    scope: "oauth tickets",
+    scope:
+      "oauth conversations.read conversations.write conversations.custom_channels.read conversations.custom_channels.write",
     state: tenant.id,
   });
   return NextResponse.redirect(

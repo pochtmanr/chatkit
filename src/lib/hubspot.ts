@@ -26,12 +26,16 @@ export interface TenantHubSpotState {
 }
 
 /** A Private App access token from HubSpot's UI looks like
- *  `<region>-<uuid-without-dashes-grouped>` and never expires. Detect that
- *  format so we skip the refresh dance — Private Apps don't have refresh
- *  tokens or short-lived access tokens at all. */
+ *  `pat-<region>-<uuid>` (modern format) or `<region>-<uuid>` (legacy)
+ *  and never expires. Detect that format so we skip the refresh dance —
+ *  Private Apps don't have refresh tokens or short-lived access tokens
+ *  at all.
+ *
+ *  Regions HubSpot uses today: na1, na2, eu1, eu2, ap1, au1. Match any
+ *  two-letter region prefix followed by an optional digit. */
 function isPrivateAppToken(token: string | null | undefined): boolean {
   if (!token) return false;
-  return /^(na|na2|eu|eu1|ap|au)\d?-[a-f0-9-]+$/i.test(token);
+  return /^(pat-)?[a-z]{2,}\d?-[a-f0-9-]+$/i.test(token);
 }
 
 /** Returns a valid access token for the tenant, refreshing it first if
