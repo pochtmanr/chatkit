@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Send } from "lucide-react";
+import { ArrowLeft, ExternalLink, Send } from "lucide-react";
 import { getBrowserClient } from "@/lib/supabase/client";
 
 interface DbMessage {
@@ -16,6 +16,12 @@ interface Counterpart {
   name: string | null;
   email: string | null;
   avatar_url: string | null;
+}
+
+interface ConversationMeta {
+  id: string;
+  kind: "support" | "order";
+  external_ref: string | null;
 }
 
 /**
@@ -39,6 +45,7 @@ export function ThreadPanel({
 }) {
   const [messages, setMessages] = useState<DbMessage[] | null>(null);
   const [counterpart, setCounterpart] = useState<Counterpart | null>(null);
+  const [convMeta, setConvMeta] = useState<ConversationMeta | null>(null);
   const [text, setText] = useState("");
   const [isSending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,13 +64,15 @@ export function ThreadPanel({
           const data = (await res.json().catch(() => null)) as { error?: string } | null;
           throw new Error(data?.error ?? `load ${res.status}`);
         }
-        const { messages: rows, counterpart: cp } = (await res.json()) as {
+        const { messages: rows, counterpart: cp, conversation: meta } = (await res.json()) as {
           messages: DbMessage[];
           counterpart: Counterpart | null;
+          conversation: ConversationMeta;
         };
         if (cancelled) return;
         setMessages(rows);
         setCounterpart(cp);
+        setConvMeta(meta);
       } catch (err) {
         if (cancelled) return;
         setError(err instanceof Error ? err.message : "load failed");
@@ -147,28 +156,74 @@ export function ThreadPanel({
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        {counterpart?.avatar_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={counterpart.avatar_url}
-            alt=""
-            className="h-7 w-7 rounded-full object-cover bg-zinc-200 dark:bg-zinc-800 shrink-0"
-          />
-        ) : (
-          <div className="h-7 w-7 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-medium text-zinc-600 dark:text-zinc-400 shrink-0">
-            {(counterpart?.name || counterpart?.email || "?").slice(0, 2).toUpperCase()}
-          </div>
-        )}
-        <div className="flex-1 min-w-0">
-          <div className="text-xs font-medium truncate text-zinc-900 dark:text-zinc-100">
-            {counterpart?.name || counterpart?.email || `Conversation #${conversationId.slice(0, 8)}`}
-          </div>
-          {counterpart?.email && counterpart?.name && (
-            <div className="text-[10px] text-zinc-500 truncate">
-              {counterpart.email}
+        {/* While we're still loading the messages payload (which also
+            carries the counterpart info) show a skeleton instead of a
+            "?" + fallback name flash. */}
+        {messages === null ? (
+          <>
+            <div className="h-7 w-7 rounded-full bg-zinc-200 dark:bg-zinc-800 animate-pulse shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="h-3 w-24 rounded bg-zinc-200 dark:bg-zinc-800 animate-pulse" />
             </div>
-          )}
-        </div>
+          </>
+        ) : (
+          <>
+            {counterpart?.avatar_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={counterpart.avatar_url}
+                alt=""
+                className="h-7 w-7 rounded-full object-cover bg-zinc-200 dark:bg-zinc-800 shrink-0"
+              />
+            ) : counterpart?.name || counterpart?.email ? (
+              <div className="h-7 w-7 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-medium text-zinc-600 dark:text-zinc-400 shrink-0">
+                {(counterpart.name || counterpart.email || "").slice(0, 2).toUpperCase()}
+              </div>
+            ) : null}
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-medium truncate text-zinc-900 dark:text-zinc-100">
+                {counterpart?.name ||
+                  counterpart?.email ||
+                  // For order chats, fall back to the order id (the
+                  // external_ref) rather than the long internal UUID.
+                  (convMeta?.kind === "order" && convMeta.external_ref
+                    ? `Order ${convMeta.external_ref}`
+                    : `Conversation #${conversationId.slice(0, 8)}`)}
+              </div>
+              {counterpart?.email && counterpart?.name && (
+                <div className="text-[10px] text-zinc-500 truncate">
+                  {counterpart.email}
+                </div>
+              )}
+              {convMeta?.kind === "order" && convMeta.external_ref && (counterpart?.name || counterpart?.email) && (
+                <div className="text-[10px] text-zinc-500 truncate">
+                  Order {convMeta.external_ref}
+                </div>
+              )}
+            </div>
+            {counterpart?.user_id && (
+              <button
+                type="button"
+                onClick={() => {
+                  // Tell the host page to navigate to this user's
+                  // profile. Host decides the route (user vs driver).
+                  window.parent.postMessage(
+                    {
+                      type: "chat-admin:view-profile",
+                      userId: counterpart.user_id,
+                    },
+                    "*",
+                  );
+                }}
+                title="View profile"
+                aria-label="View profile"
+                className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-600 dark:text-zinc-400 shrink-0"
+              >
+                <ExternalLink className="h-4 w-4" />
+              </button>
+            )}
+          </>
+        )}
       </div>
 
       <div

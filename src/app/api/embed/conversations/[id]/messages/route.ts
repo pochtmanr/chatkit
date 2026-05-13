@@ -33,7 +33,7 @@ export async function GET(
   // Scope check: conversation must belong to the JWT's tenant.
   const { data: conv } = await service
     .from("conversations")
-    .select("id, external_ref")
+    .select("id, kind, external_ref, participants")
     .eq("id", conversationId)
     .eq("tenant_id", session.tenantId)
     .maybeSingle();
@@ -55,26 +55,31 @@ export async function GET(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Counterpart for the header. avatar_url is optional (column added
-  // in migration 0010) — wrap in a try-catch so the endpoint still
-  // works on databases where the migration hasn't been applied yet.
+  // Counterpart for the header. For support chats it's the end-user
+  // (external_ref). For order chats it's the customer (participants[0]
+  // by convention). avatar_url is optional (column added in migration
+  // 0010) — gracefully handle databases where the migration hasn't
+  // been applied yet.
+  const lookupKey =
+    conv.kind === "order"
+      ? (Array.isArray(conv.participants) ? conv.participants[0] : null) ?? null
+      : conv.external_ref;
   let counterpart: { user_id: string; name: string | null; email: string | null; avatar_url: string | null } | null = null;
-  if (conv.external_ref) {
+  if (lookupKey) {
     try {
       const { data } = await service
         .from("chat_users")
         .select("user_id, name, email, avatar_url")
         .eq("tenant_id", session.tenantId)
-        .eq("user_id", conv.external_ref)
+        .eq("user_id", lookupKey)
         .maybeSingle();
       counterpart = data ?? null;
     } catch {
-      // Column may not exist yet; retry without avatar_url.
       const { data } = await service
         .from("chat_users")
         .select("user_id, name, email")
         .eq("tenant_id", session.tenantId)
-        .eq("user_id", conv.external_ref)
+        .eq("user_id", lookupKey)
         .maybeSingle();
       counterpart = data
         ? { ...data, avatar_url: null }
@@ -85,5 +90,10 @@ export async function GET(
   return NextResponse.json({
     messages: (rows ?? []).slice().reverse(),
     counterpart: counterpart ?? null,
+    conversation: {
+      id: conv.id,
+      kind: conv.kind,
+      external_ref: conv.external_ref,
+    },
   });
 }
