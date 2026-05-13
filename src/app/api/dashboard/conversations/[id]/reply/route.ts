@@ -102,16 +102,27 @@ export async function POST(
   }
 
   // Fire FCM push to the customer via the GoDelivery webhook service.
-  // The webhook resolves the customer's FCM token from Firestore on its
-  // own (we don't store FCM tokens in chat-admin's Supabase), so all we
-  // need to pass is their Firebase UID (= conversation.external_ref).
+  // We read the FCM token from chat_users (populated by the SDK on
+  // setCurrentUser) and pass it directly so the webhook doesn't have
+  // to fall back to a Firestore lookup. external_ref is the customer's
+  // Firebase UID = our chat_users.user_id.
   // Fire-and-forget — push failures shouldn't block the admin's reply.
   const externalRef = (conv as unknown as OwnerRow).external_ref;
   if (externalRef) {
+    const { data: chatUser } = await service
+      .from("chat_users")
+      .select("fcm_tokens, email, name")
+      .eq("tenant_id", conv.tenant_id)
+      .eq("user_id", externalRef)
+      .maybeSingle();
+    const tokens: string[] = Array.isArray(chatUser?.fcm_tokens)
+      ? (chatUser.fcm_tokens as string[])
+      : [];
     sendPushViaWebhook({
       userId: externalRef,
       conversationId,
       bodyText: body,
+      fcmToken: tokens[0],
     }).catch((err) => {
       console.warn(
         `[dashboard/reply] webhook push failed for ${conversationId}:`,
@@ -133,6 +144,7 @@ async function sendPushViaWebhook(args: {
   userId: string;
   conversationId: string;
   bodyText: string;
+  fcmToken?: string;
 }): Promise<void> {
   const truncated =
     args.bodyText.length > 100 ? `${args.bodyText.slice(0, 100)}…` : args.bodyText;
@@ -144,10 +156,10 @@ async function sendPushViaWebhook(args: {
       title: "New message from support",
       userID: args.userId,
       eventType: "support_message",
-      // The webhook service looks up FCM tokens by userID; passing
-      // 'no-token' tells it to do that lookup rather than send to a
-      // specific token we'd otherwise be expected to provide.
-      fcmToken: "no-token",
+      // Pass the real FCM token if we have one. The webhook still falls
+      // back to a Firestore lookup if we send "no-token", but that's
+      // for callers without chat-admin's chat_users view of the world.
+      fcmToken: args.fcmToken ?? "no-token",
       support_ticket_id: args.conversationId,
       is_message: true,
       senderType: "admin",

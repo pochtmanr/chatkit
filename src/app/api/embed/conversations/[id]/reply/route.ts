@@ -103,14 +103,24 @@ export async function POST(
     );
   }
 
-  // Fire push to the customer via the GoDelivery webhook. Same wire
-  // format as the dashboard reply route — keeps the webhook contract
-  // unchanged regardless of which path triggered it.
+  // Fire push to the customer via the GoDelivery webhook. Look up the
+  // customer's FCM token from chat_users (populated by the SDK) so the
+  // webhook doesn't need a Firestore fallback.
   if (conv.external_ref) {
+    const { data: chatUser } = await service
+      .from("chat_users")
+      .select("fcm_tokens")
+      .eq("tenant_id", conv.tenant_id)
+      .eq("user_id", conv.external_ref)
+      .maybeSingle();
+    const tokens: string[] = Array.isArray(chatUser?.fcm_tokens)
+      ? (chatUser.fcm_tokens as string[])
+      : [];
     sendPushViaWebhook({
       userId: conv.external_ref,
       conversationId,
       bodyText: body,
+      fcmToken: tokens[0],
     }).catch((err) => {
       console.warn(
         `[embed/reply] webhook push failed for ${conversationId}:`,
@@ -126,6 +136,7 @@ async function sendPushViaWebhook(args: {
   userId: string;
   conversationId: string;
   bodyText: string;
+  fcmToken?: string;
 }): Promise<void> {
   const truncated =
     args.bodyText.length > 100
@@ -139,7 +150,7 @@ async function sendPushViaWebhook(args: {
       title: "New message from support",
       userID: args.userId,
       eventType: "support_message",
-      fcmToken: "no-token",
+      fcmToken: args.fcmToken ?? "no-token",
       support_ticket_id: args.conversationId,
       is_message: true,
       senderType: "admin",
