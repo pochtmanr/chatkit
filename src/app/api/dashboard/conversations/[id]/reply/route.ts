@@ -50,12 +50,16 @@ export async function POST(
   const service = getServiceClient();
   const { data: conv } = await service
     .from("conversations")
-    .select("id, tenant_id, external_ref, tenants!inner(owner_user_id)")
+    .select(
+      "id, tenant_id, kind, external_ref, participants, tenants!inner(owner_user_id)",
+    )
     .eq("id", conversationId)
     .maybeSingle();
   type OwnerRow = {
     tenant_id: string;
+    kind: "support" | "order";
     external_ref: string | null;
+    participants: string[] | null;
     tenants: { owner_user_id: string };
   };
   const owner = (conv as unknown as OwnerRow | null)?.tenants?.owner_user_id;
@@ -101,25 +105,29 @@ export async function POST(
     );
   }
 
-  // Fire FCM push to the customer via the GoDelivery webhook service.
-  // We read the FCM token from chat_users (populated by the SDK on
-  // setCurrentUser) and pass it directly so the webhook doesn't have
-  // to fall back to a Firestore lookup. external_ref is the customer's
-  // Firebase UID = our chat_users.user_id.
-  // Fire-and-forget — push failures shouldn't block the admin's reply.
-  const externalRef = (conv as unknown as OwnerRow).external_ref;
-  if (externalRef) {
+  // Push to the customer via the GoDelivery webhook. The "customer"
+  // target depends on conversation kind:
+  //   support: external_ref = end-user uid → push them
+  //   order:   external_ref = order id. Push participants[0] (the
+  //            customer side after the migration script writes
+  //            [clientId, driverId]).
+  const c = conv as unknown as OwnerRow;
+  const pushUserId =
+    c.kind === "order"
+      ? (Array.isArray(c.participants) ? c.participants[0] : null) ?? null
+      : c.external_ref;
+  if (pushUserId) {
     const { data: chatUser } = await service
       .from("chat_users")
       .select("fcm_tokens, email, name")
       .eq("tenant_id", conv.tenant_id)
-      .eq("user_id", externalRef)
+      .eq("user_id", pushUserId)
       .maybeSingle();
     const tokens: string[] = Array.isArray(chatUser?.fcm_tokens)
       ? (chatUser.fcm_tokens as string[])
       : [];
     sendPushViaWebhook({
-      userId: externalRef,
+      userId: pushUserId,
       conversationId,
       bodyText: body,
       fcmToken: tokens[0],

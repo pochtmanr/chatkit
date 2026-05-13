@@ -57,7 +57,7 @@ export async function POST(
   // Conversation must belong to the tenant named in the JWT.
   const { data: conv } = await service
     .from("conversations")
-    .select("id, tenant_id, external_ref")
+    .select("id, tenant_id, kind, external_ref, participants")
     .eq("id", conversationId)
     .eq("tenant_id", session.tenantId)
     .maybeSingle();
@@ -103,21 +103,28 @@ export async function POST(
     );
   }
 
-  // Fire push to the customer via the GoDelivery webhook. Look up the
-  // customer's FCM token from chat_users (populated by the SDK) so the
-  // webhook doesn't need a Firestore fallback.
-  if (conv.external_ref) {
+  // Push to the customer via the GoDelivery webhook. The "customer"
+  // target depends on conversation kind:
+  //   support: external_ref = end-user uid → push them
+  //   order:   external_ref = order id (NOT a user uid). Push the
+  //            customer side, which by convention is participants[0]
+  //            after the migration script writes [clientId, driverId].
+  const pushUserId =
+    conv.kind === "order"
+      ? (Array.isArray(conv.participants) ? conv.participants[0] : null) ?? null
+      : conv.external_ref;
+  if (pushUserId) {
     const { data: chatUser } = await service
       .from("chat_users")
       .select("fcm_tokens")
       .eq("tenant_id", conv.tenant_id)
-      .eq("user_id", conv.external_ref)
+      .eq("user_id", pushUserId)
       .maybeSingle();
     const tokens: string[] = Array.isArray(chatUser?.fcm_tokens)
       ? (chatUser.fcm_tokens as string[])
       : [];
     sendPushViaWebhook({
-      userId: conv.external_ref,
+      userId: pushUserId,
       conversationId,
       bodyText: body,
       fcmToken: tokens[0],
