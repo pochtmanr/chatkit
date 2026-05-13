@@ -119,7 +119,7 @@ export function WidgetShell({ apiKey }: { apiKey: string }) {
           className="pointer-events-auto bg-zinc-950 rounded-2xl shadow-2xl border border-zinc-800 flex flex-col overflow-hidden w-full h-full"
         >
           <header className="flex items-center justify-between border-b border-zinc-800 px-4 py-3 bg-zinc-950">
-            <span className="text-sm font-semibold">
+            <span className="text-sm font-semibold text-zinc-100">
               {view === "thread" ? "Conversation" : "Support inbox"}
             </span>
             <button

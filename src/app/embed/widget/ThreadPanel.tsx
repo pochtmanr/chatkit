@@ -422,7 +422,7 @@ export function ThreadPanel({
                   className={`max-w-[78%] rounded-2xl text-xs break-words ${
                     isSelf
                       ? "bg-zinc-100 text-zinc-900 rounded-br-sm"
-                      : "bg-zinc-900 border border-zinc-800 rounded-bl-sm"
+                      : "bg-zinc-900 border border-zinc-800 text-zinc-100 rounded-bl-sm"
                   } ${hasImage ? "overflow-hidden p-0" : "px-3 py-1.5 whitespace-pre-wrap"} ${
                     isSelf ? "cursor-pointer" : ""
                   }`}
@@ -460,7 +460,7 @@ export function ThreadPanel({
                         onKeyDown={(e) => {
                           if (e.key === "Escape") setEditingId(null);
                         }}
-                        className="w-full bg-transparent text-xs outline-none"
+                        className="w-full bg-transparent text-xs outline-none text-current"
                       />
                     </form>
                   ) : (
@@ -554,7 +554,7 @@ export function ThreadPanel({
           }}
           placeholder="Type a reply…"
           rows={1}
-          className="flex-1 resize-none rounded-lg border border-zinc-700 bg-transparent px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-100 max-h-20"
+          className="flex-1 resize-none rounded-lg border border-zinc-700 bg-transparent px-3 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-100 max-h-20"
         />
         <button
           type="submit"

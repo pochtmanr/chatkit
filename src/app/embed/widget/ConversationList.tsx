@@ -117,7 +117,7 @@ export function ConversationList({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search conversations…"
-            className="w-full pl-8 pr-2 py-1.5 text-xs rounded-md border border-zinc-700 bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-100"
+            className="w-full pl-8 pr-2 py-1.5 text-xs rounded-md border border-zinc-700 bg-zinc-900 text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-100"
           />
         </div>
       </div>
@@ -152,7 +152,7 @@ export function ConversationList({
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-sm font-medium truncate">
+                  <span className="text-sm font-medium truncate text-zinc-100">
                     {name}
                     {orderSuffix}
                   </span>
