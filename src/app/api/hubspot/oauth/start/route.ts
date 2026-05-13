@@ -48,18 +48,20 @@ export async function GET(request: NextRequest) {
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: `${origin}/api/hubspot/oauth/callback`,
-    // Conversations API mode: each chat conversation maps to a HubSpot
-    // thread under a per-tenant ChannelAccount in a Custom Channel.
-    // `conversations.read/write` lets us publish incoming messages and
-    // read thread history; `tickets` is kept so the legacy
-    // tickets-mode bridge still works for tenants that haven't
-    // migrated yet (see hubspot_conversations_mode flag).
+    // Conversations API mode only: each chat conversation maps to a
+    // HubSpot thread under a per-tenant ChannelAccount in a Custom
+    // Channel. `conversations.read/write` lets us publish incoming
+    // messages and read thread history.
+    //
+    // `tickets` was removed when we deprecated the legacy bridge —
+    // keeping it would force every connected HubSpot app to also
+    // configure the tickets scope, and we no longer use it.
     //
     // We deliberately don't request crm.objects.owners.read here —
     // that scope is gated behind paid tiers on many HubSpot accounts
     // and triggers a "scopes mismatch" install rejection. The settings
     // page falls back to a manual owner-id text input instead.
-    scope: "oauth tickets conversations.read conversations.write",
+    scope: "oauth conversations.read conversations.write",
     state: tenant.id,
   });
   return NextResponse.redirect(
