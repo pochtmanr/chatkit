@@ -593,15 +593,11 @@ export function ThreadPanel({
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={isSending || isUploading}
-          aria-label={isUploading ? "Uploading" : "Attach image"}
-          title={isUploading ? "Uploading…" : "Attach image"}
+          aria-label="Attach image"
+          title="Attach image"
           className="p-1.5 rounded-md hover:bg-zinc-900 text-zinc-400 disabled:opacity-40"
         >
-          {isUploading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Paperclip className="h-4 w-4" />
-          )}
+          <Paperclip className="h-4 w-4" />
         </button>
         <textarea
           value={text}

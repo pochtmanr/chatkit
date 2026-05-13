@@ -281,11 +281,7 @@ export function ThreadView({
           title="Attach image"
           className="p-2 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-600 dark:text-zinc-400 disabled:opacity-40"
         >
-          {isUploading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Paperclip className="h-4 w-4" />
-          )}
+          <Paperclip className="h-4 w-4" />
         </button>
         <textarea
           value={text}
