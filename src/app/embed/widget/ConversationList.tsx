@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 
 interface ConversationRow {
   id: string;
+  kind: "support" | "order";
   external_ref: string | null;
   last_message: string | null;
   last_at: string | null;
+  participants: string[] | null;
 }
 
 interface ChatUserRow {
@@ -82,8 +84,18 @@ export function ConversationList({
   return (
     <ul className="divide-y divide-zinc-200 dark:divide-zinc-800 overflow-y-auto h-full">
       {rows.map((c) => {
-        const u = c.external_ref ? users.get(c.external_ref) : null;
-        const name = u?.name || u?.email || c.external_ref || c.id.slice(0, 8);
+        // Support: name comes from chat_users keyed by external_ref.
+        // Order: external_ref is the order id; customer is participants[0].
+        const lookupKey =
+          c.kind === "order"
+            ? c.participants?.[0] ?? null
+            : c.external_ref;
+        const u = lookupKey ? users.get(lookupKey) : null;
+        const name = u?.name || u?.email || lookupKey || c.id.slice(0, 8);
+        const orderSuffix =
+          c.kind === "order" && c.external_ref
+            ? ` · #${c.external_ref.slice(-6).toUpperCase()}`
+            : "";
         return (
           <li key={c.id}>
             <button
@@ -96,7 +108,10 @@ export function ConversationList({
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-sm font-medium truncate">{name}</span>
+                  <span className="text-sm font-medium truncate">
+                    {name}
+                    {orderSuffix}
+                  </span>
                   {c.last_at && (
                     <span className="text-[10px] text-zinc-500 shrink-0">
                       {relativeTime(new Date(c.last_at))}
@@ -104,6 +119,11 @@ export function ConversationList({
                   )}
                 </div>
                 <p className="text-xs text-zinc-500 truncate mt-0.5">
+                  {c.kind === "order" && (
+                    <span className="inline-block mr-1 px-1 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-[9px] uppercase tracking-wide">
+                      Order
+                    </span>
+                  )}
                   {c.last_message || (
                     <span className="italic">No messages yet</span>
                   )}
