@@ -13,7 +13,11 @@
 
 import { getServiceClient } from "@/lib/supabase/server";
 
-const WEBHOOK_TIMEOUT_MS = 5000;
+// Generous timeout — the receiving endpoint may do Firestore lookups,
+// fan-out FCM to multiple devices, and send SMTP emails to a few
+// admins, all within the request. 5s was too tight; 25s leaves
+// breathing room under Vercel's default 60s function ceiling.
+const WEBHOOK_TIMEOUT_MS = 25000;
 
 export interface TenantWebhookPayload {
   event: "message_received";
