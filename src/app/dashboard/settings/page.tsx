@@ -1,6 +1,8 @@
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { getServerClient, getServiceClient } from "@/lib/supabase/server";
 import { HubSpotOwnerPicker } from "./HubSpotOwnerPicker";
+import { EmbedSnippets } from "./EmbedSnippets";
 
 export default async function SettingsPage({
   searchParams,
@@ -72,6 +74,14 @@ export default async function SettingsPage({
 
   const hubspotConnected = tenant.integration_type === "hubspot" && !!tenant.hubspot_portal_id;
 
+  // Compute the chat-admin host so the embed snippet shows the real
+  // URL (works for prod, preview, localhost). We read x-forwarded-* so
+  // it reflects the public URL, not Vercel's internal hostname.
+  const h = await headers();
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "chat-admin-theta.vercel.app";
+  const chatAdminHost = `${proto}://${host}`;
+
   return (
     <div className="space-y-6">
       <header>
@@ -114,6 +124,27 @@ export default async function SettingsPage({
           Save
         </button>
       </form>
+
+      <section className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight">
+            Embed in your admin
+          </h2>
+          <p className="mt-1 text-sm text-zinc-500">
+            Drop the inbox into another admin panel via iframe. Your
+            users stay signed in to your own app; chat-admin trusts a
+            short-lived JWT you sign on the server. Full guide:{" "}
+            <code className="text-xs">docs/embed-iframe.md</code>.
+          </p>
+        </div>
+        <div className="text-sm">
+          <span className="text-zinc-500">Workspace (tenant) id: </span>
+          <code className="font-mono bg-zinc-100 dark:bg-zinc-800 rounded px-1.5 py-0.5 text-xs">
+            {tenant.id}
+          </code>
+        </div>
+        <EmbedSnippets tenantId={tenant.id} defaultHost={chatAdminHost} />
+      </section>
 
       <section className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 space-y-4">
         <div className="flex items-start justify-between gap-4">
