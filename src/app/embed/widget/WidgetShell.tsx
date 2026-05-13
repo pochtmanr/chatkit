@@ -59,7 +59,7 @@ export function WidgetShell({ apiKey }: { apiKey: string }) {
           inside the panel. Background opaque so it doesn't bleed through. */}
       {view !== "closed" && (
         <div
-          className="pointer-events-auto bg-white dark:bg-zinc-950 rounded-2xl shadow-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col overflow-hidden mb-3"
+          className="pointer-events-auto bg-white dark:bg-zinc-950 rounded-2xl shadow-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col overflow-hidden"
           style={{ width: 360, height: 540 }}
         >
           <header className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 px-4 py-3 bg-white dark:bg-zinc-950">
@@ -93,19 +93,19 @@ export function WidgetShell({ apiKey }: { apiKey: string }) {
         </div>
       )}
 
-      {/* FAB — always rendered. */}
-      <button
-        type="button"
-        onClick={view === "closed" ? openList : close}
-        aria-label={view === "closed" ? "Open support inbox" : "Close support inbox"}
-        className="pointer-events-auto h-14 w-14 rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-2xl flex items-center justify-center hover:scale-105 transition-transform"
-      >
-        {view === "closed" ? (
+      {/* FAB — only when the panel is closed. When open, the X in the
+          panel header takes its place; doubling them up adds visual
+          noise. */}
+      {view === "closed" && (
+        <button
+          type="button"
+          onClick={openList}
+          aria-label="Open support inbox"
+          className="pointer-events-auto h-14 w-14 rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-2xl flex items-center justify-center hover:scale-105 transition-transform"
+        >
           <MessageCircle className="h-6 w-6" />
-        ) : (
-          <X className="h-6 w-6" />
-        )}
-      </button>
+        </button>
+      )}
     </div>
   );
 }
