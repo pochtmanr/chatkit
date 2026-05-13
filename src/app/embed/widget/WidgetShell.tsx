@@ -116,9 +116,9 @@ export function WidgetShell({ apiKey }: { apiKey: string }) {
           to match (no empty gutter around it). */}
       {view !== "closed" && (
         <div
-          className="pointer-events-auto bg-white dark:bg-zinc-950 rounded-2xl shadow-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col overflow-hidden w-full h-full"
+          className="pointer-events-auto bg-zinc-950 rounded-2xl shadow-2xl border border-zinc-800 flex flex-col overflow-hidden w-full h-full"
         >
-          <header className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 px-4 py-3 bg-white dark:bg-zinc-950">
+          <header className="flex items-center justify-between border-b border-zinc-800 px-4 py-3 bg-zinc-950">
             <span className="text-sm font-semibold">
               {view === "thread" ? "Conversation" : "Support inbox"}
             </span>
@@ -126,7 +126,7 @@ export function WidgetShell({ apiKey }: { apiKey: string }) {
               type="button"
               onClick={close}
               aria-label="Close"
-              className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-600 dark:text-zinc-400"
+              className="p-1.5 rounded-md hover:bg-zinc-900 text-zinc-400"
             >
               <X className="h-4 w-4" />
             </button>
@@ -157,7 +157,7 @@ export function WidgetShell({ apiKey }: { apiKey: string }) {
           type="button"
           onClick={openList}
           aria-label="Open support inbox"
-          className="pointer-events-auto h-14 w-14 mb-3 mr-3 rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-2xl flex items-center justify-center hover:scale-105 transition-transform"
+          className="pointer-events-auto h-14 w-14 mb-3 mr-3 rounded-full bg-zinc-100 text-zinc-900 shadow-2xl flex items-center justify-center hover:scale-105 transition-transform"
         >
           <MessageCircle className="h-6 w-6" />
         </button>

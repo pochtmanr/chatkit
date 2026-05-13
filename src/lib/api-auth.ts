@@ -15,14 +15,6 @@ export interface AuthedTenant {
   name: string;
   api_key: string;
   status: "active" | "overage" | "suspended";
-  integration_type: "native" | "hubspot";
-  hubspot_owner_id: string | null;
-  /** When true, chat messages route through HubSpot Conversations API
-   *  (Custom Channel) instead of Tickets+Notes. See migration 0008. */
-  hubspot_conversations_mode: boolean;
-  hubspot_custom_channel_id: string | null;
-  hubspot_channel_account_id: string | null;
-  hubspot_channel_account_email: string | null;
 }
 
 /** Parse + validate the api_key header. Returns either a tenant row
@@ -50,9 +42,7 @@ export async function authTenant(
   const service = getServiceClient();
   const { data, error } = await service
     .from("tenants")
-    .select(
-      "id, name, api_key, status, integration_type, hubspot_owner_id, hubspot_conversations_mode, hubspot_custom_channel_id, hubspot_channel_account_id, hubspot_channel_account_email",
-    )
+    .select("id, name, api_key, status")
     .eq("api_key", apiKey)
     .maybeSingle();
   if (error || !data) {

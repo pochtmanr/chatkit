@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { LogOut, BarChart3, Key, Webhook, HelpCircle, Link2, Settings, Inbox } from "lucide-react";
+import { LogOut, BarChart3, Key, Webhook, Settings, Inbox } from "lucide-react";
 import { getServerClient } from "@/lib/supabase/server";
 import { logoutAction } from "../(auth)/actions";
 
@@ -9,8 +9,6 @@ const NAV = [
   { href: "/dashboard/inbox", label: "Inbox", icon: Inbox },
   { href: "/dashboard/api-keys", label: "API keys", icon: Key },
   { href: "/dashboard/webhooks", label: "Webhooks", icon: Webhook },
-  { href: "/dashboard/faq", label: "FAQ", icon: HelpCircle },
-  { href: "/dashboard/quick-links", label: "Quick links", icon: Link2 },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 

@@ -33,7 +33,6 @@ export async function GET(request: NextRequest) {
       tenant: {
         id: auth.tenant.id,
         name: auth.tenant.name,
-        integration_type: auth.tenant.integration_type,
       },
       realtime: {
         supabase_url: supabaseUrl,
