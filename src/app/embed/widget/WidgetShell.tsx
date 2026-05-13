@@ -39,6 +39,20 @@ export function WidgetShell({ apiKey }: { apiKey: string }) {
     post(view !== "closed");
   }, [view, post]);
 
+  // Listen for "open the widget" commands from the host page. Lets a
+  // Join-chat button on an order row pop the FAB without navigating.
+  useEffect(() => {
+    const onMsg = (e: MessageEvent) => {
+      const data = e.data;
+      if (!data || typeof data !== "object") return;
+      if ((data as { type?: string }).type !== "chat-admin:open") return;
+      setOpenConvId(null);
+      setView("list");
+    };
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, []);
+
   const openList = () => {
     setOpenConvId(null);
     setView("list");
