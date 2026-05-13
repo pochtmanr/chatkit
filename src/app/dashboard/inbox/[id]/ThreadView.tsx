@@ -20,6 +20,13 @@ interface ThreadViewProps {
    *  sender_id = "agent-<currentUserId>"; we check the prefix + id. */
   currentUserId: string;
   initialMessages: DbMessage[];
+  /** Endpoint to POST replies to. Defaults to the dashboard's session-
+   *  authed reply route. Embed mode overrides to the JWT-authed
+   *  endpoint and supplies a bearer token. */
+  replyEndpoint?: string;
+  /** Optional bearer token sent in the Authorization header on every
+   *  reply POST. Embed mode uses this. */
+  replyAuthToken?: string;
 }
 
 const AGENT_SENDER_ID_PREFIX = "agent-";
@@ -37,7 +44,11 @@ export function ThreadView({
   conversationId,
   currentUserId,
   initialMessages,
+  replyEndpoint,
+  replyAuthToken,
 }: ThreadViewProps) {
+  const endpoint =
+    replyEndpoint ?? `/api/dashboard/conversations/${conversationId}/reply`;
   const [messages, setMessages] = useState<DbMessage[]>(initialMessages);
   const [text, setText] = useState("");
   const [isSending, setSending] = useState(false);
@@ -83,14 +94,17 @@ export function ThreadView({
     setSending(true);
     setError(null);
     try {
-      const res = await fetch(
-        `/api/dashboard/conversations/${conversationId}/reply`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ body }),
-        },
-      );
+      const headers: Record<string, string> = {
+        "content-type": "application/json",
+      };
+      if (replyAuthToken) {
+        headers.authorization = `Bearer ${replyAuthToken}`;
+      }
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ body }),
+      });
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null;
         throw new Error(data?.error ?? `send failed (${res.status})`);
@@ -105,7 +119,7 @@ export function ThreadView({
     } finally {
       setSending(false);
     }
-  }, [conversationId, isSending, text]);
+  }, [endpoint, isSending, replyAuthToken, text]);
 
   return (
     <>
