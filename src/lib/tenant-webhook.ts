@@ -23,6 +23,18 @@ export interface TenantWebhookPayload {
   event: "message_received";
   tenant_id: string;
   conversation_id: string;
+  /** Conversation kind:
+   *   - 'support' — admin/support 1:1 with the end-user
+   *   - 'order'   — driver↔customer chat scoped to one order
+   *  Tenants use this to decide whether to deep-link a push into the
+   *  admin chat view or the order-chat view. */
+  conversation_kind: "support" | "order";
+  /** External identifier the tenant owns:
+   *   - support: the end-user's user id
+   *   - order:   the order id
+   *  Forward this into FCM data so the mobile app can open the right
+   *  thread directly when the notification is tapped. */
+  external_ref: string | null;
   /** Direction of the message:
    *   - 'inbound'  — a customer / driver sent it (the agent should see it)
    *   - 'outbound' — an agent sent it (the end-user should see it)
@@ -129,6 +141,8 @@ export async function fireTenantWebhook(
     event: "message_received",
     tenant_id: tenantId,
     conversation_id: args.conversationId,
+    conversation_kind: (conv?.kind as "support" | "order") ?? "support",
+    external_ref: conv?.external_ref ?? null,
     direction,
     to_user_id: toUserId,
     fcm_tokens: fcmTokens,
