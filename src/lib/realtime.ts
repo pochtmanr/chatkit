@@ -65,3 +65,47 @@ export async function broadcastMessage(
     }
   }
 }
+
+/** Broadcast a typing event. Same channel as messages so clients only
+ *  need one subscription. Includes the sender id + display name; the
+ *  receiver decides how long to show the indicator (typically clears
+ *  ~3s after the last event). */
+export async function broadcastTyping(
+  conversationId: string,
+  args: { senderId: string; senderName?: string },
+): Promise<void> {
+  const service = getServiceClient();
+  const channelName = `conv:${conversationId}`;
+  const channel = service.channel(channelName);
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("subscribe timeout")), 2000);
+      channel.subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          clearTimeout(timer);
+          resolve();
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          clearTimeout(timer);
+          reject(new Error(`subscribe status ${status}`));
+        }
+      });
+    });
+    await channel.send({
+      type: "broadcast",
+      event: "typing",
+      payload: { senderId: args.senderId, senderName: args.senderName ?? null, at: Date.now() },
+    });
+  } catch (err) {
+    // Typing isn't critical — log + move on.
+    console.warn("[realtime] typing broadcast failed", {
+      channel: channelName,
+      error: err instanceof Error ? err.message : err,
+    });
+  } finally {
+    try {
+      await service.removeChannel(channel);
+    } catch {
+      /* ignore cleanup errors */
+    }
+  }
+}

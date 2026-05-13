@@ -64,6 +64,10 @@ export function ThreadPanel({
   const [actionMenu, setActionMenu] = useState<{ id: string } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
+  const [typingUsers, setTypingUsers] = useState<
+    { senderId: string; senderName: string | null; at: number }[]
+  >([]);
+  const lastTypingSentRef = useRef(0);
   const listRef = useRef<HTMLDivElement>(null);
 
   // Initial load via the API (server-side, RLS-bypassing).
@@ -98,7 +102,8 @@ export function ThreadPanel({
     };
   }, [apiKey, conversationId]);
 
-  // Realtime subscription so new messages append without polling.
+  // Realtime subscription — messages + typing events on the same
+  // channel. Typing entries TTL out after ~3.5s in a separate sweep.
   useEffect(() => {
     const client = getBrowserClient();
     const channel = client.channel(`conv:${conversationId}`);
@@ -112,11 +117,60 @@ export function ThreadPanel({
           return [...prev, m];
         });
       })
+      .on("broadcast", { event: "typing" }, ({ payload }) => {
+        const p = payload as {
+          senderId?: string;
+          senderName?: string | null;
+          at?: number;
+        };
+        if (!p?.senderId) return;
+        // Filter out our own typing echo. The agent's sender_id is
+        // "agent" (set by the embed reply endpoint).
+        if (p.senderId === "agent") return;
+        setTypingUsers((prev) => {
+          const without = prev.filter((u) => u.senderId !== p.senderId);
+          return [
+            ...without,
+            {
+              senderId: p.senderId!,
+              senderName: p.senderName ?? null,
+              at: p.at ?? Date.now(),
+            },
+          ];
+        });
+      })
       .subscribe();
+    // Expire stale typers every second.
+    const sweep = setInterval(() => {
+      const cutoff = Date.now() - 3500;
+      setTypingUsers((prev) => {
+        const next = prev.filter((u) => u.at > cutoff);
+        return next.length === prev.length ? prev : next;
+      });
+    }, 1000);
     return () => {
+      clearInterval(sweep);
       client.removeChannel(channel).catch(() => undefined);
     };
   }, [conversationId]);
+
+  /** Fire a throttled typing event so the customer sees "Support is
+   *  typing…" on their side. */
+  const fireTyping = useCallback(() => {
+    const now = Date.now();
+    if (now - lastTypingSentRef.current < 2000) return;
+    lastTypingSentRef.current = now;
+    fetch(`/api/embed/conversations/${conversationId}/typing`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({ sender_id: "agent", sender_name: "Support" }),
+    }).catch(() => {
+      /* typing is non-critical */
+    });
+  }, [apiKey, conversationId]);
 
   // Auto-scroll to latest.
   useEffect(() => {
@@ -509,6 +563,12 @@ export function ThreadPanel({
         )}
       </div>
 
+      {typingUsers.length > 0 && (
+        <div className="px-3 py-1 text-[10px] italic text-zinc-400 border-t border-zinc-800 bg-zinc-950">
+          {typingUsers[0].senderName || "Someone"} is typing…
+        </div>
+      )}
+
       {isUploading && (
         <div className="px-3 py-1.5 bg-zinc-900 border-t border-zinc-800 text-[10px] text-zinc-400 flex items-center gap-2">
           <Loader2 className="h-3 w-3 animate-spin" /> Uploading image…
@@ -545,7 +605,10 @@ export function ThreadPanel({
         </button>
         <textarea
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            setText(e.target.value);
+            if (e.target.value.length > 0) fireTyping();
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
