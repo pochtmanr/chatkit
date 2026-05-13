@@ -157,7 +157,7 @@ export function WidgetShell({ apiKey }: { apiKey: string }) {
           type="button"
           onClick={openList}
           aria-label="Open support inbox"
-          className="pointer-events-auto h-14 w-14 mb-3 mr-3 rounded-full bg-zinc-100 text-zinc-900 shadow-2xl flex items-center justify-center hover:scale-105 transition-transform"
+          className="pointer-events-auto h-14 w-14 mb-3 mr-3 rounded-full bg-zinc-900 text-white shadow-2xl flex items-center justify-center hover:scale-105 transition-transform"
         >
           <MessageCircle className="h-6 w-6" />
         </button>

@@ -1,7 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, ExternalLink, Paperclip, Send } from "lucide-react";
+import {
+  ArrowLeft,
+  ExternalLink,
+  Loader2,
+  Paperclip,
+  Pencil,
+  Send,
+  Trash2,
+} from "lucide-react";
 import { getBrowserClient } from "@/lib/supabase/client";
 
 interface DbMessage {
@@ -50,7 +58,12 @@ export function ThreadPanel({
   const [convMeta, setConvMeta] = useState<ConversationMeta | null>(null);
   const [text, setText] = useState("");
   const [isSending, setSending] = useState(false);
+  const [isUploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Long-press action menu state: { messageId, anchor }.
+  const [actionMenu, setActionMenu] = useState<{ id: string } | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
 
   // Initial load via the API (server-side, RLS-bypassing).
@@ -149,8 +162,8 @@ export function ThreadPanel({
 
   /** Upload an image attachment + send it as an image-type message. */
   const sendImage = useCallback(async (file: File) => {
-    if (isSending) return;
-    setSending(true);
+    if (isUploading) return;
+    setUploading(true);
     setError(null);
     try {
       const fd = new FormData();
@@ -194,9 +207,67 @@ export function ThreadPanel({
     } catch (err) {
       setError(err instanceof Error ? err.message : "image send failed");
     } finally {
-      setSending(false);
+      setUploading(false);
     }
-  }, [apiKey, conversationId, isSending]);
+  }, [apiKey, conversationId, isUploading]);
+
+  /** Edit an agent's own message body. */
+  const editMessage = useCallback(
+    async (msgId: string, body: string) => {
+      const trimmed = body.trim();
+      if (!trimmed) return;
+      try {
+        const res = await fetch(
+          `/api/embed/conversations/${conversationId}/messages/${msgId}`,
+          {
+            method: "PATCH",
+            headers: {
+              "content-type": "application/json",
+              authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({ body: trimmed }),
+          },
+        );
+        if (!res.ok) {
+          const data = (await res.json().catch(() => null)) as { error?: string } | null;
+          throw new Error(data?.error ?? `edit failed (${res.status})`);
+        }
+        const { message } = (await res.json()) as { message: DbMessage };
+        setMessages((prev) =>
+          (prev ?? []).map((m) => (m.id === msgId ? { ...m, ...message } : m)),
+        );
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "edit failed");
+      }
+    },
+    [apiKey, conversationId],
+  );
+
+  /** Soft-delete an agent's own message. */
+  const deleteMessage = useCallback(
+    async (msgId: string) => {
+      // Optimistic: hide the row immediately; rollback on failure.
+      const prev = messages;
+      setMessages((cur) => (cur ?? []).filter((m) => m.id !== msgId));
+      try {
+        const res = await fetch(
+          `/api/embed/conversations/${conversationId}/messages/${msgId}`,
+          {
+            method: "DELETE",
+            headers: { authorization: `Bearer ${apiKey}` },
+          },
+        );
+        if (!res.ok) {
+          const data = (await res.json().catch(() => null)) as { error?: string } | null;
+          throw new Error(data?.error ?? `delete failed (${res.status})`);
+        }
+      } catch (err) {
+        setMessages(prev); // rollback
+        setError(err instanceof Error ? err.message : "delete failed");
+      }
+    },
+    [apiKey, conversationId, messages],
+  );
 
   // Hidden file input — clicked programmatically by the paperclip button.
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -319,17 +390,42 @@ export function ThreadPanel({
           messages.map((m) => {
             const isSelf = (m.sender_id || "").startsWith(AGENT_SENDER_ID_PREFIX);
             const hasImage = m.message_type === "image" && !!m.media_url;
+            const isEditing = editingId === m.id;
+            const isMenuOpen = actionMenu?.id === m.id;
+
+            // Long-press detection: 500ms pointerdown without move.
+            let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+            const onPointerDown = () => {
+              if (!isSelf) return;
+              longPressTimer = setTimeout(() => {
+                setActionMenu({ id: m.id });
+              }, 500);
+            };
+            const cancelLongPress = () => {
+              if (longPressTimer) clearTimeout(longPressTimer);
+            };
+
             return (
               <div
                 key={m.id}
-                className={`flex ${isSelf ? "justify-end" : "justify-start"}`}
+                className={`flex ${isSelf ? "justify-end" : "justify-start"} relative`}
               >
                 <div
+                  onPointerDown={onPointerDown}
+                  onPointerUp={cancelLongPress}
+                  onPointerLeave={cancelLongPress}
+                  onContextMenu={(e) => {
+                    if (!isSelf) return;
+                    e.preventDefault();
+                    setActionMenu({ id: m.id });
+                  }}
                   className={`max-w-[78%] rounded-2xl text-xs break-words ${
                     isSelf
                       ? "bg-zinc-100 text-zinc-900 rounded-br-sm"
                       : "bg-zinc-900 border border-zinc-800 rounded-bl-sm"
-                  } ${hasImage ? "overflow-hidden p-0" : "px-3 py-1.5 whitespace-pre-wrap"}`}
+                  } ${hasImage ? "overflow-hidden p-0" : "px-3 py-1.5 whitespace-pre-wrap"} ${
+                    isSelf ? "cursor-pointer" : ""
+                  }`}
                 >
                   {hasImage && (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -347,17 +443,77 @@ export function ThreadPanel({
                       />
                     </a>
                   )}
-                  {m.body && (
-                    <div className={hasImage ? "px-3 py-1.5" : ""}>
-                      {m.body}
-                    </div>
+                  {isEditing ? (
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        void editMessage(m.id, editText);
+                        setEditingId(null);
+                      }}
+                      className={hasImage ? "px-3 py-1.5" : ""}
+                    >
+                      <input
+                        autoFocus
+                        value={editText}
+                        onChange={(e) => setEditText(e.target.value)}
+                        onBlur={() => setEditingId(null)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape") setEditingId(null);
+                        }}
+                        className="w-full bg-transparent text-xs outline-none"
+                      />
+                    </form>
+                  ) : (
+                    m.body && (
+                      <div className={hasImage ? "px-3 py-1.5" : ""}>
+                        {m.body}
+                      </div>
+                    )
                   )}
                 </div>
+
+                {/* Action menu — anchored to the right side of the bubble row. */}
+                {isMenuOpen && (
+                  <div
+                    className="absolute right-0 -top-8 z-10 bg-zinc-900 border border-zinc-700 rounded-lg shadow-lg flex items-center gap-1 p-1 text-xs text-zinc-200"
+                    onMouseLeave={() => setActionMenu(null)}
+                  >
+                    {!hasImage && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditText(m.body ?? "");
+                          setEditingId(m.id);
+                          setActionMenu(null);
+                        }}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-zinc-800"
+                      >
+                        <Pencil className="h-3 w-3" /> Edit
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void deleteMessage(m.id);
+                        setActionMenu(null);
+                      }}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-zinc-800 text-red-300"
+                    >
+                      <Trash2 className="h-3 w-3" /> Delete
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })
         )}
       </div>
+
+      {isUploading && (
+        <div className="px-3 py-1.5 bg-zinc-900 border-t border-zinc-800 text-[10px] text-zinc-400 flex items-center gap-2">
+          <Loader2 className="h-3 w-3 animate-spin" /> Uploading image…
+        </div>
+      )}
 
       <form
         onSubmit={(e) => {
@@ -376,12 +532,16 @@ export function ThreadPanel({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          disabled={isSending}
-          aria-label="Attach image"
-          title="Attach image"
+          disabled={isSending || isUploading}
+          aria-label={isUploading ? "Uploading" : "Attach image"}
+          title={isUploading ? "Uploading…" : "Attach image"}
           className="p-1.5 rounded-md hover:bg-zinc-900 text-zinc-400 disabled:opacity-40"
         >
-          <Paperclip className="h-4 w-4" />
+          {isUploading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Paperclip className="h-4 w-4" />
+          )}
         </button>
         <textarea
           value={text}

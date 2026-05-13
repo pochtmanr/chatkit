@@ -2,10 +2,11 @@
  * Layout override for the widget iframe.
  *
  * - Transparent body so when the host iframe is collapsed to FAB-only
- *   size, no white box bleeds through.
- * - Forces dark mode (Tailwind dark: variants always apply) so the
- *   widget matches a typical admin dashboard look regardless of the
- *   user's OS preference.
+ *   size, no dark backdrop bleeds through around the FAB.
+ * - color-scheme is intentionally NOT set: the panel uses explicit
+ *   dark colors (bg-zinc-950 etc) so theming doesn't depend on the
+ *   browser's color-scheme heuristic, which Chrome uses to paint
+ *   default backgrounds and can leak a dark rectangle around the FAB.
  */
 export default function WidgetLayout({
   children,
@@ -13,16 +14,15 @@ export default function WidgetLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="dark">
+    <>
       <style>{`
         html, body {
           background: transparent !important;
           margin: 0;
           padding: 0;
-          color-scheme: dark;
         }
       `}</style>
       {children}
-    </div>
+    </>
   );
 }
