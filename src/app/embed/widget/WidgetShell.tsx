@@ -39,19 +39,52 @@ export function WidgetShell({ apiKey }: { apiKey: string }) {
     post(view !== "closed");
   }, [view, post]);
 
-  // Listen for "open the widget" commands from the host page. Lets a
-  // Join-chat button on an order row pop the FAB without navigating.
+  // Listen for "open the widget" commands from the host page. Optional
+  // externalRef + kind lets the host deep-link to a specific
+  // conversation (e.g. "Join chat" on an order row opens that order's
+  // thread directly). If lookup fails we fall back to the list view.
   useEffect(() => {
-    const onMsg = (e: MessageEvent) => {
+    const onMsg = async (e: MessageEvent) => {
       const data = e.data;
       if (!data || typeof data !== "object") return;
-      if ((data as { type?: string }).type !== "chat-admin:open") return;
+      const msg = data as {
+        type?: string;
+        externalRef?: string;
+        kind?: "support" | "order";
+      };
+      if (msg.type !== "chat-admin:open") return;
+
+      // No external ref → just open the list.
+      if (!msg.externalRef) {
+        setOpenConvId(null);
+        setView("list");
+        return;
+      }
+
+      try {
+        const params = new URLSearchParams({ external_ref: msg.externalRef });
+        if (msg.kind) params.set("kind", msg.kind);
+        const res = await fetch(
+          `/api/embed/conversations/find?${params.toString()}`,
+          { headers: { authorization: `Bearer ${apiKey}` } },
+        );
+        if (res.ok) {
+          const { conversation } = (await res.json()) as {
+            conversation: { id: string };
+          };
+          setOpenConvId(conversation.id);
+          setView("thread");
+          return;
+        }
+      } catch {
+        // fall through to list
+      }
       setOpenConvId(null);
       setView("list");
     };
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
-  }, []);
+  }, [apiKey]);
 
   const openList = () => {
     setOpenConvId(null);
