@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getServerClient, getServiceClient } from "@/lib/supabase/server";
 import { broadcastMessage } from "@/lib/realtime";
+import { fireTenantWebhook } from "@/lib/tenant-webhook";
 
 /**
  * Admin reply endpoint.
@@ -120,6 +121,14 @@ export async function POST(
       err,
     );
   }
+
+  // Fire tenant-configured webhook (generic fan-out).
+  fireTenantWebhook(conv.tenant_id, {
+    conversationId,
+    senderId,
+    body: body || null,
+    mediaUrl: mediaUrl,
+  }).catch((err) => console.warn("[dashboard/reply] webhook fire failed:", err));
 
   // Push to the customer via the GoDelivery webhook. The "customer"
   // target depends on conversation kind:

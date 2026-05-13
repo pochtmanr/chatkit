@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getServiceClient } from "@/lib/supabase/server";
 import { broadcastMessage } from "@/lib/realtime";
 import { verifyEmbedKey } from "@/lib/embed-auth";
+import { fireTenantWebhook } from "@/lib/tenant-webhook";
 
 /**
  * Embed-mode reply endpoint.
@@ -118,6 +119,16 @@ export async function POST(
       err,
     );
   }
+
+  // Fire the generic tenant webhook (the dashboard's "Webhooks"
+  // page configures this — separate from the hardcoded isrshipping
+  // FCM webhook below).
+  fireTenantWebhook(conv.tenant_id, {
+    conversationId,
+    senderId,
+    body: body || null,
+    mediaUrl: mediaUrl,
+  }).catch((err) => console.warn("[embed/reply] webhook fire failed:", err));
 
   // Push to the customer via the GoDelivery webhook. The "customer"
   // target depends on conversation kind:

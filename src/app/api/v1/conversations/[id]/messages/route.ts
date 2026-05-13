@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { authTenant, corsHeaders } from "@/lib/api-auth";
 import { getServiceClient } from "@/lib/supabase/server";
 import { broadcastMessage } from "@/lib/realtime";
+import { fireTenantWebhook } from "@/lib/tenant-webhook";
 
 /**
  * Public SDK message API.
@@ -160,6 +161,15 @@ export async function POST(
     .eq("id", conversationId);
 
   await broadcastMessage(conversationId, message);
+
+  // Fire the tenant's configured webhook (fan-out to FCM, SMS, etc).
+  // Fire-and-forget — webhook failures don't block the SDK's send.
+  fireTenantWebhook(tenant.id, {
+    conversationId,
+    senderId: payload.sender_id!,
+    body: payload.body ?? null,
+    mediaUrl: payload.media_url ?? null,
+  }).catch((err) => console.warn("[v1/messages] webhook fire failed:", err));
 
   return NextResponse.json({ message }, { headers: corsHeaders });
 }
