@@ -17,7 +17,6 @@ import { fireTenantWebhook } from "@/lib/tenant-webhook";
  */
 
 const AGENT_SENDER_ID = "agent";
-const WEBHOOK_URL = "https://www.isrshipping.com/api/webhook-notification";
 
 export async function POST(
   request: NextRequest,
@@ -130,68 +129,5 @@ export async function POST(
     mediaUrl: mediaUrl,
   }).catch((err) => console.warn("[embed/reply] webhook fire failed:", err));
 
-  // Push to the customer via the GoDelivery webhook. The "customer"
-  // target depends on conversation kind:
-  //   support: external_ref = end-user uid → push them
-  //   order:   external_ref = order id (NOT a user uid). Push the
-  //            customer side, which by convention is participants[0]
-  //            after the migration script writes [clientId, driverId].
-  const pushUserId =
-    conv.kind === "order"
-      ? (Array.isArray(conv.participants) ? conv.participants[0] : null) ?? null
-      : conv.external_ref;
-  if (pushUserId) {
-    const { data: chatUser } = await service
-      .from("chat_users")
-      .select("fcm_tokens")
-      .eq("tenant_id", conv.tenant_id)
-      .eq("user_id", pushUserId)
-      .maybeSingle();
-    const tokens: string[] = Array.isArray(chatUser?.fcm_tokens)
-      ? (chatUser.fcm_tokens as string[])
-      : [];
-    sendPushViaWebhook({
-      userId: pushUserId,
-      conversationId,
-      bodyText: body,
-      fcmToken: tokens[0],
-    }).catch((err) => {
-      console.warn(
-        `[embed/reply] webhook push failed for ${conversationId}:`,
-        err,
-      );
-    });
-  }
-
   return NextResponse.json({ message });
-}
-
-async function sendPushViaWebhook(args: {
-  userId: string;
-  conversationId: string;
-  bodyText: string;
-  fcmToken?: string;
-}): Promise<void> {
-  const truncated =
-    args.bodyText.length > 100
-      ? `${args.bodyText.slice(0, 100)}…`
-      : args.bodyText;
-  const res = await fetch(WEBHOOK_URL, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      message: truncated,
-      title: "New message from support",
-      userID: args.userId,
-      eventType: "support_message",
-      fcmToken: args.fcmToken ?? "no-token",
-      support_ticket_id: args.conversationId,
-      is_message: true,
-      senderType: "admin",
-    }),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`webhook ${res.status}: ${text.slice(0, 200)}`);
-  }
 }
