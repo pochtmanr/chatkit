@@ -50,10 +50,14 @@ export async function POST(
   const service = getServiceClient();
   const { data: conv } = await service
     .from("conversations")
-    .select("id, tenant_id, tenants!inner(owner_user_id)")
+    .select("id, tenant_id, external_ref, tenants!inner(owner_user_id)")
     .eq("id", conversationId)
     .maybeSingle();
-  type OwnerRow = { tenant_id: string; tenants: { owner_user_id: string } };
+  type OwnerRow = {
+    tenant_id: string;
+    external_ref: string | null;
+    tenants: { owner_user_id: string };
+  };
   const owner = (conv as unknown as OwnerRow | null)?.tenants?.owner_user_id;
   if (!conv || owner !== user.id) {
     return NextResponse.json({ error: "conversation not found" }, { status: 404 });
@@ -97,5 +101,60 @@ export async function POST(
     );
   }
 
+  // Fire FCM push to the customer via the GoDelivery webhook service.
+  // The webhook resolves the customer's FCM token from Firestore on its
+  // own (we don't store FCM tokens in chat-admin's Supabase), so all we
+  // need to pass is their Firebase UID (= conversation.external_ref).
+  // Fire-and-forget — push failures shouldn't block the admin's reply.
+  const externalRef = (conv as unknown as OwnerRow).external_ref;
+  if (externalRef) {
+    sendPushViaWebhook({
+      userId: externalRef,
+      conversationId,
+      bodyText: body,
+    }).catch((err) => {
+      console.warn(
+        `[dashboard/reply] webhook push failed for ${conversationId}:`,
+        err,
+      );
+    });
+  }
+
   return NextResponse.json({ message });
+}
+
+const WEBHOOK_URL = "https://www.isrshipping.com/api/webhook-notification";
+
+/** POST to the GoDelivery push-notification webhook. Mirrors the shape
+ *  used by the mobile app (`sendSupportMessageWebhook` in
+ *  Delivery-Expo/src/utils/webhook.ts) so the receiving service routes
+ *  it to the correct FCM channel. */
+async function sendPushViaWebhook(args: {
+  userId: string;
+  conversationId: string;
+  bodyText: string;
+}): Promise<void> {
+  const truncated =
+    args.bodyText.length > 100 ? `${args.bodyText.slice(0, 100)}…` : args.bodyText;
+  const res = await fetch(WEBHOOK_URL, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      message: truncated,
+      title: "New message from support",
+      userID: args.userId,
+      eventType: "support_message",
+      // The webhook service looks up FCM tokens by userID; passing
+      // 'no-token' tells it to do that lookup rather than send to a
+      // specific token we'd otherwise be expected to provide.
+      fcmToken: "no-token",
+      support_ticket_id: args.conversationId,
+      is_message: true,
+      senderType: "admin",
+    }),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`webhook ${res.status}: ${text.slice(0, 200)}`);
+  }
 }
