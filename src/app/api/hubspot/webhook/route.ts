@@ -6,6 +6,7 @@ import {
   stripHtml,
   verifyHubSpotSignature,
 } from "@/lib/hubspot";
+import { parseSenderFromBody } from "@/lib/hubspot-conversations";
 import { broadcastMessage } from "@/lib/realtime";
 
 /** Sentinel sender id for messages that came back from a HubSpot agent.
@@ -39,6 +40,31 @@ interface HubSpotEventBatchItem {
   occurredAt: number;
 }
 
+/** Payload HubSpot POSTs to a Custom Channel's webhookUrl when an
+ *  agent sends a reply. Documented in lib/hubspot-conversations.ts.
+ *  Unlike subscription webhooks this arrives as a SINGLE object, not
+ *  an array, with a top-level `type` of OUTGOING_CHANNEL_MESSAGE_CREATED. */
+interface CustomChannelOutgoingEvent {
+  type: "OUTGOING_CHANNEL_MESSAGE_CREATED";
+  portalId: number | string;
+  channelId: string;
+  eventTimestamp: string;
+  eventId: string;
+  channelIntegrationThreadIds?: string[];
+  message: {
+    id: string;
+    type: "MESSAGE";
+    channelId: string;
+    channelAccountId: string;
+    conversationsThreadId: string;
+    createdAt: string;
+    text?: string;
+    richText?: string;
+    direction: "OUTGOING";
+    senders?: Array<{ actorId?: string; name?: string }>;
+  };
+}
+
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
 
@@ -62,15 +88,28 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "invalid signature" }, { status: 401 });
   }
 
-  let events: HubSpotEventBatchItem[];
+  let parsed: unknown;
   try {
-    events = JSON.parse(rawBody) as HubSpotEventBatchItem[];
+    parsed = JSON.parse(rawBody);
   } catch {
     return NextResponse.json({ error: "invalid json" }, { status: 400 });
   }
-  if (!Array.isArray(events)) {
+
+  // Custom Channel outgoing events arrive as a single object, not an
+  // array. Detect by the `type` field and route to a dedicated handler.
+  if (
+    parsed &&
+    typeof parsed === "object" &&
+    (parsed as { type?: string }).type === "OUTGOING_CHANNEL_MESSAGE_CREATED"
+  ) {
+    await handleOutgoingChannelMessage(parsed as CustomChannelOutgoingEvent);
+    return NextResponse.json({ received: 1 });
+  }
+
+  if (!Array.isArray(parsed)) {
     return NextResponse.json({ error: "expected array" }, { status: 400 });
   }
+  const events = parsed as HubSpotEventBatchItem[];
 
   const service = getServiceClient();
   for (const event of events) {
@@ -285,5 +324,89 @@ async function handleEngagementCreation(
         err,
       );
     }
+  }
+}
+
+/** Custom Channel outgoing message handler.
+ *
+ *  Fired when an agent replies in HubSpot to a thread that originated
+ *  on our Custom Channel. With hubspot_conversations_mode=true the
+ *  authoritative copy lives on the HubSpot thread itself — we don't
+ *  re-insert it into Supabase. Instead we:
+ *    1. Locate the tenant + conversation by channelAccountId + thread.
+ *    2. Update the conversation row's last_message preview (for
+ *       conversations-list endpoints + push-notification snippets).
+ *    3. POST to the tenant's configured webhook_url so they can fan
+ *       out FCM / SMS / their own push channel.
+ *
+ *  The customer's app will see the new message on its next 5-second
+ *  poll of GET /messages, which reads from HubSpot directly.
+ */
+async function handleOutgoingChannelMessage(
+  event: CustomChannelOutgoingEvent,
+): Promise<void> {
+  const service = getServiceClient();
+  const channelAccountId = event.message?.channelAccountId;
+  const threadId = event.message?.conversationsThreadId;
+  if (!channelAccountId || !threadId) return;
+
+  const { data: tenant } = await service
+    .from("tenants")
+    .select("id, webhook_url")
+    .eq("hubspot_channel_account_id", channelAccountId)
+    .maybeSingle();
+  if (!tenant) {
+    console.warn(
+      `[hubspot/webhook] OUTGOING_CHANNEL_MESSAGE_CREATED for unknown channelAccountId=${channelAccountId}`,
+    );
+    return;
+  }
+
+  const { data: link } = await service
+    .from("conversation_hubspot_links")
+    .select("conversation_id")
+    .eq("tenant_id", tenant.id)
+    .eq("hubspot_thread_id", threadId)
+    .maybeSingle();
+  if (!link) {
+    console.warn(
+      `[hubspot/webhook] OUTGOING_CHANNEL_MESSAGE_CREATED for unknown thread=${threadId} tenant=${tenant.id}`,
+    );
+    return;
+  }
+
+  // Outgoing messages from agents don't carry our `**Name** [id:…]`
+  // prefix, but use the parser defensively in case an integration adds
+  // one in future. parsed.body falls back to the raw text when no
+  // prefix is present.
+  const rawText = event.message.text ?? event.message.richText ?? "";
+  const snippet = parseSenderFromBody(rawText).body.slice(0, 280);
+
+  await service
+    .from("conversations")
+    .update({ last_message: snippet, last_at: event.message.createdAt })
+    .eq("id", link.conversation_id);
+
+  if (!tenant.webhook_url) return;
+  // Fire-and-forget. We don't block HubSpot's webhook on the tenant's
+  // own infra responding — it would chain retry-storms if their server
+  // is slow. Errors get logged for the operator to inspect.
+  try {
+    await fetch(tenant.webhook_url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        event: "message_received",
+        tenant_id: tenant.id,
+        conversation_id: link.conversation_id,
+        sender_id: "hubspot-agent",
+        snippet,
+      }),
+    });
+  } catch (err) {
+    console.warn(
+      `[hubspot/webhook] tenant webhook_url POST failed for ${tenant.id}:`,
+      err,
+    );
   }
 }
