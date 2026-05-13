@@ -42,15 +42,27 @@ export async function POST(
 
   const { id: conversationId } = await params;
 
-  let payload: { body?: string };
+  let payload: {
+    body?: string;
+    media_url?: string;
+    message_type?: "text" | "image";
+  };
   try {
     payload = await request.json();
   } catch {
     return NextResponse.json({ error: "invalid json" }, { status: 400 });
   }
   const body = (payload.body ?? "").trim();
-  if (!body) {
-    return NextResponse.json({ error: "body required" }, { status: 400 });
+  const mediaUrl = payload.media_url?.trim() || null;
+  const messageType: "text" | "image" =
+    payload.message_type === "image" || (mediaUrl && !body)
+      ? "image"
+      : "text";
+  if (!body && !mediaUrl) {
+    return NextResponse.json(
+      { error: "body or media_url required" },
+      { status: 400 },
+    );
   }
 
   const service = getServiceClient();
@@ -77,8 +89,9 @@ export async function POST(
       conversation_id: conversationId,
       sender_id: senderId,
       receiver_id: null,
-      body,
-      message_type: "text",
+      body: body || null,
+      message_type: messageType,
+      media_url: mediaUrl,
     })
     .select()
     .single();
@@ -91,7 +104,10 @@ export async function POST(
 
   await service
     .from("conversations")
-    .update({ last_message: body, last_at: message.created_at })
+    .update({
+      last_message: body || (messageType === "image" ? "[image]" : ""),
+      last_at: message.created_at,
+    })
     .eq("id", conversationId);
 
   try {

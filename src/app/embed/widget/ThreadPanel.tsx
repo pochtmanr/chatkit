@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, ExternalLink, Send } from "lucide-react";
+import { ArrowLeft, ExternalLink, Paperclip, Send } from "lucide-react";
 import { getBrowserClient } from "@/lib/supabase/client";
 
 interface DbMessage {
@@ -9,6 +9,8 @@ interface DbMessage {
   sender_id: string;
   body: string | null;
   created_at: string;
+  message_type?: string;
+  media_url?: string | null;
 }
 
 interface Counterpart {
@@ -145,6 +147,66 @@ export function ThreadPanel({
     }
   }, [apiKey, conversationId, isSending, text]);
 
+  /** Upload an image attachment + send it as an image-type message. */
+  const sendImage = useCallback(async (file: File) => {
+    if (isSending) return;
+    setSending(true);
+    setError(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const upRes = await fetch(
+        `/api/embed/conversations/${conversationId}/upload`,
+        {
+          method: "POST",
+          headers: { authorization: `Bearer ${apiKey}` },
+          body: fd,
+        },
+      );
+      if (!upRes.ok) {
+        const data = (await upRes.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(data?.error ?? `upload failed (${upRes.status})`);
+      }
+      const { url } = (await upRes.json()) as { url: string };
+
+      const sendRes = await fetch(
+        `/api/embed/conversations/${conversationId}/reply`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            media_url: url,
+            message_type: "image",
+          }),
+        },
+      );
+      if (!sendRes.ok) {
+        const data = (await sendRes.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(data?.error ?? `send failed (${sendRes.status})`);
+      }
+      const { message } = (await sendRes.json()) as { message: DbMessage };
+      setMessages((prev) =>
+        prev?.some((m) => m.id === message.id) ? prev : [...(prev ?? []), message],
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "image send failed");
+    } finally {
+      setSending(false);
+    }
+  }, [apiKey, conversationId, isSending]);
+
+  // Hidden file input — clicked programmatically by the paperclip button.
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) void sendImage(f);
+    // Reset so picking the same file twice in a row still fires onChange.
+    e.target.value = "";
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-200 dark:border-zinc-800">
@@ -201,12 +263,29 @@ export function ThreadPanel({
                 </div>
               )}
             </div>
+            {convMeta?.kind === "order" && convMeta.external_ref && (
+              <button
+                type="button"
+                onClick={() => {
+                  window.parent.postMessage(
+                    {
+                      type: "chat-admin:view-order",
+                      orderId: convMeta.external_ref,
+                    },
+                    "*",
+                  );
+                }}
+                title="View order"
+                aria-label="View order"
+                className="text-[10px] px-2 py-1 rounded-md bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 shrink-0"
+              >
+                Order
+              </button>
+            )}
             {counterpart?.user_id && (
               <button
                 type="button"
                 onClick={() => {
-                  // Tell the host page to navigate to this user's
-                  // profile. Host decides the route (user vs driver).
                   window.parent.postMessage(
                     {
                       type: "chat-admin:view-profile",
@@ -239,19 +318,40 @@ export function ThreadPanel({
         ) : (
           messages.map((m) => {
             const isSelf = (m.sender_id || "").startsWith(AGENT_SENDER_ID_PREFIX);
+            const hasImage = m.message_type === "image" && !!m.media_url;
             return (
               <div
                 key={m.id}
                 className={`flex ${isSelf ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[78%] rounded-2xl px-3 py-1.5 text-xs whitespace-pre-wrap break-words ${
+                  className={`max-w-[78%] rounded-2xl text-xs break-words ${
                     isSelf
                       ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-br-sm"
                       : "bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-bl-sm"
-                  }`}
+                  } ${hasImage ? "overflow-hidden p-0" : "px-3 py-1.5 whitespace-pre-wrap"}`}
                 >
-                  {m.body}
+                  {hasImage && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <a
+                      href={m.media_url ?? "#"}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block"
+                    >
+                      <img
+                        src={m.media_url!}
+                        alt="attachment"
+                        className="block max-w-full max-h-72 object-cover"
+                        loading="lazy"
+                      />
+                    </a>
+                  )}
+                  {m.body && (
+                    <div className={hasImage ? "px-3 py-1.5" : ""}>
+                      {m.body}
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -266,6 +366,23 @@ export function ThreadPanel({
         }}
         className="border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 flex items-end gap-2"
       >
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={onPickFile}
+          className="hidden"
+        />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isSending}
+          aria-label="Attach image"
+          title="Attach image"
+          className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-600 dark:text-zinc-400 disabled:opacity-40"
+        >
+          <Paperclip className="h-4 w-4" />
+        </button>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
