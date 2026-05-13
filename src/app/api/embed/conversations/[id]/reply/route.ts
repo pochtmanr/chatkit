@@ -1,21 +1,21 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getServiceClient } from "@/lib/supabase/server";
 import { broadcastMessage } from "@/lib/realtime";
-import { verifyEmbedToken } from "@/lib/embed-auth";
+import { verifyEmbedKey } from "@/lib/embed-auth";
 
 /**
  * Embed-mode reply endpoint.
  *
- * Mirrors /api/dashboard/conversations/:id/reply but authenticates via
- * a Bearer JWT (verified by lib/embed-auth) instead of a Supabase
- * session. The JWT also names which tenant the bearer can act on, so
- * we enforce that the conversation belongs to that tenant.
+ * Auth: tenant API key in the Authorization header (`Bearer pk_live_...`)
+ * + Origin/Referer check against the configured allowlist. The same
+ * key the iframe URL carries.
  *
- * sender_id is `agent-<adminUid>` where adminUid comes from the JWT
- * payload — so the host can identify which of its admins replied.
+ * Per-admin identity isn't carried — every reply lands as `agent`. If
+ * we ever need per-admin attribution we can layer a JWT sub-claim or
+ * a separate header without changing this contract.
  */
 
-const AGENT_SENDER_ID_PREFIX = "agent-";
+const AGENT_SENDER_ID = "agent";
 const WEBHOOK_URL = "https://www.isrshipping.com/api/webhook-notification";
 
 export async function POST(
@@ -26,16 +26,16 @@ export async function POST(
   const m = auth.match(/^Bearer\s+(.+)$/i);
   if (!m) {
     return NextResponse.json(
-      { error: "missing bearer token" },
+      { error: "missing bearer key" },
       { status: 401 },
     );
   }
   let session;
   try {
-    session = verifyEmbedToken(m[1]);
+    session = await verifyEmbedKey(m[1]);
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "invalid token" },
+      { error: err instanceof Error ? err.message : "invalid key" },
       { status: 401 },
     );
   }
@@ -68,7 +68,7 @@ export async function POST(
     );
   }
 
-  const senderId = `${AGENT_SENDER_ID_PREFIX}${session.adminUid}`;
+  const senderId = AGENT_SENDER_ID;
 
   const { data: message, error: insErr } = await service
     .from("messages")

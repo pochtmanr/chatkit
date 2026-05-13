@@ -1,50 +1,36 @@
 import Link from "next/link";
 import { getServiceClient } from "@/lib/supabase/server";
-import { verifyEmbedToken } from "@/lib/embed-auth";
+import { verifyEmbedKey } from "@/lib/embed-auth";
 
 /**
  * Embed-mode inbox list.
  *
- * Auth: signed JWT in the `?token=` query param. No chat-admin login
- * required — the host (e.g. GoDelivery admin) signs the JWT and the
- * iframe URL carries it.
+ * Auth: tenant API key in `?key=` + Origin/Referer check against the
+ * configured allowlist (EMBED_ALLOWED_ORIGINS). See lib/embed-auth.
+ * No chat-admin login required.
  *
  * No sidebar, no header chrome — meant to be iframed inside another
- * admin panel that already has its own navigation. The host sets the
- * outer chrome; we just render the inbox content.
+ * admin panel that already has its own navigation.
  */
 export default async function EmbedInboxPage({
   searchParams,
 }: {
-  searchParams: Promise<{ token?: string }>;
+  searchParams: Promise<{ key?: string }>;
 }) {
-  const { token } = await searchParams;
-  if (!token) {
-    return <EmbedError message="Missing token." />;
-  }
-  let session: ReturnType<typeof verifyEmbedToken>;
+  const { key } = await searchParams;
+  let session;
   try {
-    session = verifyEmbedToken(token);
+    session = await verifyEmbedKey(key);
   } catch (err) {
     return (
       <EmbedError
-        message={`Authentication failed: ${err instanceof Error ? err.message : "invalid token"}`}
+        message={`Authentication failed: ${err instanceof Error ? err.message : "invalid"}`}
       />
     );
   }
 
   const service = getServiceClient();
-  // Confirm the tenant exists (defense in depth — JWT could be forged
-  // with a non-existent tenant id, and we'd return empty results
-  // instead of an error otherwise, making debugging confusing).
-  const { data: tenant } = await service
-    .from("tenants")
-    .select("id, name")
-    .eq("id", session.tenantId)
-    .maybeSingle();
-  if (!tenant) {
-    return <EmbedError message="Tenant not found." />;
-  }
+  const tenant = { id: session.tenantId, name: session.tenantName };
 
   const { data: conversations } = await service
     .from("conversations")
@@ -86,11 +72,11 @@ export default async function EmbedInboxPage({
               const lastAt = c.last_at ? new Date(c.last_at) : null;
               return (
                 <Link
-                  // Preserve the token in the URL so the thread page can
+                  // Preserve the key in the URL so the thread page can
                   // re-verify without needing cookies (iframes have
                   // SameSite cookie pitfalls we side-step here).
                   key={c.id}
-                  href={`/embed/inbox/${c.id}?token=${encodeURIComponent(token)}`}
+                  href={`/embed/inbox/${c.id}?key=${encodeURIComponent(key!)}`}
                   className="flex items-start gap-3 px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition"
                 >
                   <div className="h-9 w-9 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-xs font-medium text-zinc-600 dark:text-zinc-400 shrink-0">

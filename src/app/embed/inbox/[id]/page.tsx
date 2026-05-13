@@ -1,33 +1,28 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getServiceClient } from "@/lib/supabase/server";
-import { verifyEmbedToken } from "@/lib/embed-auth";
+import { verifyEmbedKey } from "@/lib/embed-auth";
 import { ThreadView } from "@/app/dashboard/inbox/[id]/ThreadView";
 
 /**
  * Embed-mode thread view.
  *
- * Same auth model as /embed/inbox: JWT in `?token=`. The token is also
- * forwarded to ThreadView so the reply POST can carry it as a Bearer
- * Authorization header on /api/embed/conversations/:id/reply.
- *
- * No outer chrome — host iframes this directly inside their own admin
- * panel layout.
+ * Same auth as /embed/inbox: tenant API key in `?key=` + Origin/Referer
+ * check. The key is forwarded to ThreadView so the reply POST carries
+ * it in the Authorization header.
  */
 export default async function EmbedThreadPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ token?: string }>;
+  searchParams: Promise<{ key?: string }>;
 }) {
   const { id } = await params;
-  const { token } = await searchParams;
-  if (!token) return <EmbedError message="Missing token." />;
-
-  let session: ReturnType<typeof verifyEmbedToken>;
+  const { key } = await searchParams;
+  let session;
   try {
-    session = verifyEmbedToken(token);
+    session = await verifyEmbedKey(key);
   } catch (err) {
     return (
       <EmbedError
@@ -76,7 +71,7 @@ export default async function EmbedThreadPage({
     <div className="flex flex-col h-dvh bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
       <header className="border-b border-zinc-200 dark:border-zinc-800 px-4 py-3 flex items-center gap-3 bg-white dark:bg-zinc-950">
         <Link
-          href={`/embed/inbox?token=${encodeURIComponent(token)}`}
+          href={`/embed/inbox?key=${encodeURIComponent(key!)}`}
           className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-600 dark:text-zinc-400"
           aria-label="Back to inbox"
         >
@@ -95,10 +90,12 @@ export default async function EmbedThreadPage({
 
       <ThreadView
         conversationId={conv.id}
-        currentUserId={session.adminUid}
+        // No per-admin identity in the API-key model — use a stable
+        // sentinel so all admin replies render on the agent side.
+        currentUserId="agent"
         initialMessages={initialMessages}
         replyEndpoint={`/api/embed/conversations/${conv.id}/reply`}
-        replyAuthToken={token}
+        replyAuthToken={key}
       />
     </div>
   );

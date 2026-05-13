@@ -17,7 +17,7 @@ export default async function SettingsPage({
   const { data: tenants } = await supabase
     .from("tenants")
     .select(
-      "id, name, email_from, plan, integration_type, hubspot_portal_id, hubspot_owner_id",
+      "id, name, email_from, plan, integration_type, hubspot_portal_id, hubspot_owner_id, api_key",
     )
     .eq("owner_user_id", user!.id)
     .limit(1);
@@ -137,13 +137,11 @@ export default async function SettingsPage({
             <code className="text-xs">docs/embed-iframe.md</code>.
           </p>
         </div>
-        <div className="text-sm">
-          <span className="text-zinc-500">Workspace (tenant) id: </span>
-          <code className="font-mono bg-zinc-100 dark:bg-zinc-800 rounded px-1.5 py-0.5 text-xs">
-            {tenant.id}
-          </code>
-        </div>
-        <EmbedSnippets tenantId={tenant.id} defaultHost={chatAdminHost} />
+        <EmbedSnippets
+          tenantId={tenant.id}
+          apiKey={tenant.api_key}
+          defaultHost={chatAdminHost}
+        />
       </section>
 
       <section className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 space-y-4">
