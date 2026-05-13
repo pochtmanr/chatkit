@@ -51,6 +51,7 @@ export function WidgetShell({ apiKey }: { apiKey: string }) {
         type?: string;
         externalRef?: string;
         kind?: "support" | "order";
+        participants?: string[];
       };
       if (msg.type !== "chat-admin:open") return;
 
@@ -62,12 +63,20 @@ export function WidgetShell({ apiKey }: { apiKey: string }) {
       }
 
       try {
-        const params = new URLSearchParams({ external_ref: msg.externalRef });
-        if (msg.kind) params.set("kind", msg.kind);
-        const res = await fetch(
-          `/api/embed/conversations/find?${params.toString()}`,
-          { headers: { authorization: `Bearer ${apiKey}` } },
-        );
+        // find-or-create: opens the thread even if no messages have
+        // been sent yet (e.g. an order with zero chat history).
+        const res = await fetch("/api/embed/conversations/find", {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${apiKey}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            external_ref: msg.externalRef,
+            kind: msg.kind ?? "support",
+            participants: msg.participants,
+          }),
+        });
         if (res.ok) {
           const { conversation } = (await res.json()) as {
             conversation: { id: string };
