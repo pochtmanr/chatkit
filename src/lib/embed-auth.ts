@@ -70,6 +70,18 @@ async function requestOrigin(): Promise<string | null> {
   }
 }
 
+/** chat-admin's own deployed URL, derived from the proxy headers. Used
+ *  to detect same-origin internal navigation (e.g. when a Link inside
+ *  /embed/widget navigates to /embed/inbox/<id> — the Origin/Referer
+ *  on that request reflects chat-admin itself, not the embedding host,
+ *  so the allowlist check would otherwise reject it). */
+async function selfOrigin(): Promise<string | null> {
+  const h = await headers();
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  return host ? `${proto}://${host}` : null;
+}
+
 export async function verifyEmbedKey(key: string | undefined | null): Promise<EmbedSession> {
   if (!key) throw new EmbedAuthError("missing key");
   if (!key.startsWith("pk_live_") && !key.startsWith("pk_test_")) {
@@ -80,13 +92,19 @@ export async function verifyEmbedKey(key: string | undefined | null): Promise<Em
   // want to leak whether a key is valid to a caller from the wrong
   // origin.
   const origin = await requestOrigin();
+  const self = await selfOrigin();
   const allowed = allowedOrigins();
   // Localhost/dev mode is permitted when no origin restrictions match
   // and we're explicitly in dev. Prevents the "I'm testing locally and
   // nothing works" pit-trap.
   const isDev = process.env.NODE_ENV !== "production";
   if (!origin && !isDev) throw new EmbedAuthError("missing origin/referer");
-  if (origin && !allowed.includes(origin)) {
+  // Same-origin requests (chat-admin → chat-admin internal navigation
+  // inside the iframe, e.g. clicking a conversation in the widget)
+  // always pass. The host-side iframe is what's gated by the allowlist.
+  if (origin && self && origin === self) {
+    // ok — internal link
+  } else if (origin && !allowed.includes(origin)) {
     throw new EmbedAuthError(`origin not allowed: ${origin}`);
   }
 
