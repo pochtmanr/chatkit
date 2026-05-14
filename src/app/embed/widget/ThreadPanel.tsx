@@ -334,12 +334,12 @@ export function ThreadPanel({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800">
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-200">
         <button
           type="button"
           onClick={onBack}
           aria-label="Back to inbox"
-          className="p-1.5 rounded-md hover:bg-zinc-900 text-zinc-400"
+          className="p-1.5 rounded-md hover:bg-zinc-100 text-zinc-500"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
@@ -348,9 +348,9 @@ export function ThreadPanel({
             "?" + fallback name flash. */}
         {messages === null ? (
           <>
-            <div className="h-7 w-7 rounded-full bg-zinc-800 animate-pulse shrink-0" />
+            <div className="h-7 w-7 rounded-full bg-zinc-100 animate-pulse shrink-0" />
             <div className="flex-1 min-w-0">
-              <div className="h-3 w-24 rounded bg-zinc-800 animate-pulse" />
+              <div className="h-3 w-24 rounded bg-zinc-100 animate-pulse" />
             </div>
           </>
         ) : (
@@ -360,15 +360,15 @@ export function ThreadPanel({
               <img
                 src={counterpart.avatar_url}
                 alt=""
-                className="h-7 w-7 rounded-full object-cover bg-zinc-800 shrink-0"
+                className="h-7 w-7 rounded-full object-cover bg-zinc-100 shrink-0"
               />
             ) : counterpart?.name || counterpart?.email ? (
-              <div className="h-7 w-7 rounded-full bg-zinc-800 flex items-center justify-center text-[10px] font-medium text-zinc-400 shrink-0">
+              <div className="h-7 w-7 rounded-full bg-zinc-100 flex items-center justify-center text-[10px] font-medium text-zinc-500 shrink-0">
                 {(counterpart.name || counterpart.email || "").slice(0, 2).toUpperCase()}
               </div>
             ) : null}
             <div className="flex-1 min-w-0">
-              <div className="text-xs font-medium truncate text-zinc-100">
+              <div className="text-xs font-medium truncate text-zinc-900">
                 {counterpart?.name ||
                   counterpart?.email ||
                   // For order chats, fall back to the order id (the
@@ -402,7 +402,7 @@ export function ThreadPanel({
                 }}
                 title="View order"
                 aria-label="View order"
-                className="text-[10px] px-2 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-300 shrink-0"
+                className="text-[10px] px-2 py-1 rounded-md bg-zinc-100 hover:bg-zinc-200 text-zinc-700 shrink-0"
               >
                 Order
               </button>
@@ -421,7 +421,7 @@ export function ThreadPanel({
                 }}
                 title="View profile"
                 aria-label="View profile"
-                className="p-1.5 rounded-md hover:bg-zinc-900 text-zinc-400 shrink-0"
+                className="p-1.5 rounded-md hover:bg-zinc-100 text-zinc-500 shrink-0"
               >
                 <ExternalLink className="h-4 w-4" />
               </button>
@@ -432,7 +432,7 @@ export function ThreadPanel({
 
       <div
         ref={listRef}
-        className="flex-1 overflow-y-auto px-3 py-2 space-y-1.5 bg-zinc-950"
+        className="flex-1 overflow-y-auto px-3 py-2 space-y-1.5 bg-white"
       >
         {!messages ? (
           <div className="text-xs text-zinc-500 p-2">Loading…</div>
@@ -475,8 +475,8 @@ export function ThreadPanel({
                   }}
                   className={`max-w-[78%] rounded-2xl text-xs break-words ${
                     isSelf
-                      ? "bg-zinc-100 text-zinc-900 rounded-br-sm"
-                      : "bg-zinc-900 border border-zinc-800 text-zinc-100 rounded-bl-sm"
+                      ? "bg-red-600 text-white rounded-br-sm"
+                      : "bg-zinc-50 border border-zinc-200 text-zinc-900 rounded-bl-sm"
                   } ${hasImage ? "overflow-hidden p-0" : "px-3 py-1.5 whitespace-pre-wrap"} ${
                     isSelf ? "cursor-pointer" : ""
                   }`}
@@ -529,7 +529,7 @@ export function ThreadPanel({
                 {/* Action menu — anchored to the right side of the bubble row. */}
                 {isMenuOpen && (
                   <div
-                    className="absolute right-0 -top-8 z-10 bg-zinc-900 border border-zinc-700 rounded-lg shadow-lg flex items-center gap-1 p-1 text-xs text-zinc-200"
+                    className="absolute right-0 -top-8 z-10 bg-zinc-50 border border-zinc-300 rounded-lg shadow-lg flex items-center gap-1 p-1 text-xs text-zinc-800"
                     onMouseLeave={() => setActionMenu(null)}
                   >
                     {!hasImage && (
@@ -540,7 +540,7 @@ export function ThreadPanel({
                           setEditingId(m.id);
                           setActionMenu(null);
                         }}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-zinc-800"
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-zinc-100"
                       >
                         <Pencil className="h-3 w-3" /> Edit
                       </button>
@@ -551,7 +551,7 @@ export function ThreadPanel({
                         void deleteMessage(m.id);
                         setActionMenu(null);
                       }}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-zinc-800 text-red-300"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-zinc-100 text-red-300"
                     >
                       <Trash2 className="h-3 w-3" /> Delete
                     </button>
@@ -564,13 +564,13 @@ export function ThreadPanel({
       </div>
 
       {typingUsers.length > 0 && (
-        <div className="px-3 py-1 text-[10px] italic text-zinc-400 border-t border-zinc-800 bg-zinc-950">
+        <div className="px-3 py-1 text-[10px] italic text-zinc-500 border-t border-zinc-200 bg-white">
           {typingUsers[0].senderName || "Someone"} is typing…
         </div>
       )}
 
       {isUploading && (
-        <div className="px-3 py-1.5 bg-zinc-900 border-t border-zinc-800 text-[10px] text-zinc-400 flex items-center gap-2">
+        <div className="px-3 py-1.5 bg-zinc-50 border-t border-zinc-200 text-[10px] text-zinc-500 flex items-center gap-2">
           <Loader2 className="h-3 w-3 animate-spin" /> Uploading image…
         </div>
       )}
@@ -580,7 +580,7 @@ export function ThreadPanel({
           e.preventDefault();
           void send();
         }}
-        className="border-t border-zinc-800 bg-zinc-950 px-3 py-2 flex items-end gap-2"
+        className="border-t border-zinc-200 bg-white px-3 py-2 flex items-end gap-2"
       >
         <input
           ref={fileInputRef}
@@ -595,7 +595,7 @@ export function ThreadPanel({
           disabled={isSending || isUploading}
           aria-label="Attach image"
           title="Attach image"
-          className="p-1.5 rounded-md hover:bg-zinc-900 text-zinc-400 disabled:opacity-40"
+          className="p-1.5 rounded-md hover:bg-zinc-100 text-zinc-500 disabled:opacity-40"
         >
           <Paperclip className="h-4 w-4" />
         </button>
@@ -613,12 +613,12 @@ export function ThreadPanel({
           }}
           placeholder="Type a reply…"
           rows={1}
-          className="flex-1 resize-none rounded-lg border border-zinc-700 bg-transparent px-3 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-100 max-h-20"
+          className="flex-1 resize-none rounded-lg border border-zinc-300 bg-transparent px-3 py-1.5 text-xs text-zinc-900 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-red-500 max-h-20"
         />
         <button
           type="submit"
           disabled={!text.trim() || isSending}
-          className="rounded-lg bg-zinc-100 text-zinc-900 px-3 py-1.5 text-xs font-medium disabled:opacity-40 inline-flex items-center gap-1"
+          className="rounded-lg bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 text-xs font-medium disabled:opacity-40 inline-flex items-center gap-1"
         >
           <Send className="h-3 w-3" />
           {isSending ? "…" : "Send"}

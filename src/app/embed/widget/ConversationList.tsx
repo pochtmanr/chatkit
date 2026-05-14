@@ -109,15 +109,15 @@ export function ConversationList({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-3 py-2 border-b border-zinc-800 bg-zinc-950">
+      <div className="px-3 py-2 border-b border-zinc-200 bg-white">
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
           <input
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search conversations…"
-            className="w-full pl-8 pr-2 py-1.5 text-xs rounded-md border border-zinc-700 bg-zinc-900 text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-100"
+            className="w-full pl-8 pr-2 py-1.5 text-xs rounded-md border border-zinc-300 bg-zinc-50 text-zinc-900 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-red-500"
           />
         </div>
       </div>
@@ -126,7 +126,7 @@ export function ConversationList({
           No matches.
         </div>
       ) : (
-        <ul className="divide-y divide-zinc-800 overflow-y-auto flex-1">
+        <ul className="divide-y divide-zinc-200 overflow-y-auto flex-1">
           {(filtered ?? []).map((c) => {
         // Support: name comes from chat_users keyed by external_ref.
         // Order: external_ref is the order id; customer is participants[0].
@@ -145,14 +145,14 @@ export function ConversationList({
             <button
               type="button"
               onClick={() => onOpen(c.id)}
-              className="w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-zinc-900 transition"
+              className="w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-zinc-100 transition"
             >
-              <div className="h-9 w-9 rounded-full bg-zinc-800 flex items-center justify-center text-xs font-medium text-zinc-400 shrink-0">
+              <div className="h-9 w-9 rounded-full bg-zinc-100 flex items-center justify-center text-xs font-medium text-zinc-500 shrink-0">
                 {name.slice(0, 2).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-sm font-medium truncate text-zinc-100">
+                  <span className="text-sm font-medium truncate text-zinc-900">
                     {name}
                     {orderSuffix}
                   </span>
@@ -164,7 +164,7 @@ export function ConversationList({
                 </div>
                 <p className="text-xs text-zinc-500 truncate mt-0.5">
                   {c.kind === "order" && (
-                    <span className="inline-block mr-1 px-1 py-0.5 rounded bg-zinc-800 text-[9px] uppercase tracking-wide">
+                    <span className="inline-block mr-1 px-1 py-0.5 rounded bg-zinc-100 text-[9px] uppercase tracking-wide">
                       Order
                     </span>
                   )}
