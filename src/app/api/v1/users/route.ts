@@ -45,14 +45,36 @@ export async function POST(request: NextRequest) {
   }
 
   const service = getServiceClient();
+
+  // Normalize empty strings to null so an unauthenticated session
+  // ("") never wipes a previously-good name from the row. We then
+  // read the existing row and only carry over non-null fields from
+  // the incoming payload, so a quiet anonymous upsert doesn't blank
+  // out the display name we already had.
+  const inName =
+    typeof payload.name === "string" && payload.name.trim().length > 0
+      ? payload.name.trim()
+      : null;
+  const inEmail =
+    typeof payload.email === "string" && payload.email.trim().length > 0
+      ? payload.email.trim()
+      : null;
+
+  const { data: existing } = await service
+    .from("chat_users")
+    .select("name, email")
+    .eq("tenant_id", tenant.id)
+    .eq("user_id", payload.user_id)
+    .maybeSingle();
+
   const { data, error } = await service
     .from("chat_users")
     .upsert(
       {
         tenant_id: tenant.id,
         user_id: payload.user_id,
-        name: payload.name ?? null,
-        email: payload.email ?? null,
+        name: inName ?? existing?.name ?? null,
+        email: inEmail ?? existing?.email ?? null,
         role: payload.role ?? "customer",
         fcm_tokens: payload.fcm_tokens ?? [],
         notification_prefs: payload.notification_prefs ?? {},
