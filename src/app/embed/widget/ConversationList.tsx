@@ -35,29 +35,44 @@ export function ConversationList({
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
-  // Filter rows by search term — matches against the displayed name,
-  // email, and the message preview. Case-insensitive substring match.
-  const filtered = useMemo(() => {
+  // Only show conversations whose participant has a resolved name (or
+  // email as a fallback). Otherwise the list fills up with raw 28-char
+  // Firebase uids that the admin can't act on. The tenant's user-sync
+  // job populates chat_users.name from Firestore, so most rows will
+  // resolve over time.
+  const visibleRows = useMemo(() => {
     if (!rows) return null;
-    const q = search.trim().toLowerCase();
-    if (!q) return rows;
     return rows.filter((c) => {
       const lookupKey =
         c.kind === "order"
           ? c.participants?.[0] ?? null
           : c.external_ref;
       const u = lookupKey ? users.get(lookupKey) : null;
-      const haystacks = [
-        u?.name,
-        u?.email,
-        c.last_message,
-        c.external_ref,
-      ]
+      const hasName =
+        (u?.name && u.name.trim().length > 0) ||
+        (u?.email && u.email.trim().length > 0);
+      return !!hasName;
+    });
+  }, [rows, users]);
+
+  // Filter rows by search term — matches against the displayed name,
+  // email, and the message preview. Case-insensitive substring match.
+  const filtered = useMemo(() => {
+    if (!visibleRows) return null;
+    const q = search.trim().toLowerCase();
+    if (!q) return visibleRows;
+    return visibleRows.filter((c) => {
+      const lookupKey =
+        c.kind === "order"
+          ? c.participants?.[0] ?? null
+          : c.external_ref;
+      const u = lookupKey ? users.get(lookupKey) : null;
+      const haystacks = [u?.name, u?.email, c.last_message]
         .filter((s): s is string => !!s)
         .map((s) => s.toLowerCase());
       return haystacks.some((s) => s.includes(q));
     });
-  }, [rows, users, search]);
+  }, [visibleRows, users, search]);
 
   useEffect(() => {
     let cancelled = false;
@@ -135,7 +150,9 @@ export function ConversationList({
             ? c.participants?.[0] ?? null
             : c.external_ref;
         const u = lookupKey ? users.get(lookupKey) : null;
-        const name = u?.name || u?.email || lookupKey || c.id.slice(0, 8);
+        // visibleRows already guarantees a name or email, but keep
+        // a safe fallback just in case (we never want a raw uid).
+        const name = u?.name || u?.email || "Unknown";
         const orderSuffix =
           c.kind === "order" && c.external_ref
             ? ` · #${c.external_ref.slice(-6).toUpperCase()}`
