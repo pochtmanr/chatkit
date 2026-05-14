@@ -65,10 +65,17 @@ export default async function EmbedInboxPage({
           </div>
         ) : (
           <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 divide-y divide-zinc-200 dark:divide-zinc-800">
-            {conversations.map((c) => {
+            {conversations
+              .filter((c) => {
+                const u = c.external_ref ? userByRef.get(c.external_ref) : null;
+                return !!(
+                  (u?.name && u.name.trim()) ||
+                  (u?.email && u.email.trim())
+                );
+              })
+              .map((c) => {
               const u = c.external_ref ? userByRef.get(c.external_ref) : null;
-              const displayName =
-                u?.name || u?.email || c.external_ref || c.id.slice(0, 8);
+              const displayName = u?.name || u?.email || "Unknown";
               const lastAt = c.last_at ? new Date(c.last_at) : null;
               return (
                 <Link
