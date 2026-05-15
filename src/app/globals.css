@@ -1,8 +1,12 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+  --font-sans: var(--font-almarai), -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-serif: var(--font-instrument-serif), Georgia, "Times New Roman", serif;
+  --color-ink: #0B0B0B;
+  --color-deep: #2B4559;
+  --color-mist: #E4E4E4;
 }
 
 html,
@@ -14,4 +18,19 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+.font-serif-italic {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+}
+
+.bg-dotted {
+  background-image: radial-gradient(
+    circle,
+    rgba(11, 11, 11, 0.22) 1px,
+    transparent 1px
+  );
+  background-size: 16px 16px;
 }
