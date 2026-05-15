@@ -1,12 +1,16 @@
+import Image from "next/image";
 import Link from "next/link";
-import { MessageSquare } from "lucide-react";
 import type { SVGProps } from "react";
 
 function LogoIcon() {
   return (
-    <span className="grid place-items-center h-8 w-8 rounded-[8px] bg-ink text-white">
-      <MessageSquare className="h-4 w-4" />
-    </span>
+    <Image
+      src="/tclogo.png"
+      alt="TinyChat"
+      width={36}
+      height={36}
+      className="h-9 w-9"
+    />
   );
 }
 
@@ -53,9 +57,9 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
   {
     title: "Developers",
     links: [
-      { label: "Docs", href: "#install" },
-      { label: "API reference", href: "#" },
-      { label: "SDKs", href: "#" },
+      { label: "Docs", href: "/sdk" },
+      { label: "API reference", href: "/api-reference" },
+      { label: "SDKs", href: "/sdk" },
       { label: "npm package", href: "#" },
     ],
   },
@@ -65,14 +69,14 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
       { label: "About", href: "#" },
       { label: "Blog", href: "#" },
       { label: "Customers", href: "#" },
-      { label: "Contact", href: "#" },
+      { label: "Support", href: "/support" },
     ],
   },
 ];
 
 function FooterCard() {
   return (
-    <div className="w-full max-w-7xl mx-auto">
+    <div className="w-full">
       <div className="bg-mist rounded-[48px] border border-mist shadow-sm overflow-hidden">
         <div className="bg-white rounded-[40px] m-2 shadow-sm">
           <div className="p-8 md:p-10 lg:p-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12">
@@ -80,7 +84,7 @@ function FooterCard() {
             <div className="lg:col-span-2 space-y-8">
               <Link href="/" className="flex items-center gap-2.5 w-fit">
                 <LogoIcon />
-                <span className="text-[26px] font-bold tracking-tight text-ink">
+                <span className="text-[26px] tracking-tight text-ink">
                   TinyChat
                 </span>
               </Link>
@@ -153,7 +157,7 @@ function FooterCard() {
 
 export default function Footer() {
   return (
-    <footer className="w-full px-4 sm:px-6 pb-10 flex flex-col items-center">
+    <footer className="mx-auto w-full max-w-7xl pt-10 pb-10 px-4 sm:px-6">
       <FooterCard />
     </footer>
   );

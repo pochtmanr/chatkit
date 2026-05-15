@@ -7,6 +7,13 @@
   --color-ink: #0B0B0B;
   --color-deep: #2B4559;
   --color-mist: #E4E4E4;
+  --color-code-text: #E8EAED;
+  --color-code-mute: #6B7480;
+  --color-code-key: #9FC0DC;
+  --color-code-string: #C7D6E2;
+  --color-code-type: #B8CADC;
+  --color-code-fn: #DDE6EF;
+  --color-code-attr: #A8BFD3;
 }
 
 html,
@@ -34,3 +41,140 @@ body {
   );
   background-size: 16px 16px;
 }
+
+.bg-dotted-mist {
+  background-image: radial-gradient(
+    circle,
+    var(--color-mist) 1px,
+    transparent 1px
+  );
+  background-size: 16px 16px;
+}
+
+.grainient-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+@keyframes hero-typing {
+  0%, 80%, 100% { transform: scale(0.7); opacity: 0.4; }
+  40%           { transform: scale(1);   opacity: 1;   }
+}
+.hero-typing-dot   { animation: hero-typing 1.2s ease-in-out infinite; }
+.hero-typing-dot-2 { animation-delay: 0.15s; }
+.hero-typing-dot-3 { animation-delay: 0.3s; }
+
+@keyframes hero-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+.hero-float-a { animation: hero-float 6s ease-in-out infinite; }
+.hero-float-b { animation: hero-float 7s ease-in-out infinite; animation-delay: 0.8s; }
+.hero-float-c { animation: hero-float 8s ease-in-out infinite; animation-delay: 1.6s; }
+
+/* Feature card hover backdrops — animations run continuously and freeze on hover */
+.feat-backdrop > * { will-change: transform; }
+.group:hover .feat-backdrop > * { animation-play-state: paused; }
+
+/* Variant 1 — Bloom: 3 round blobs orbiting */
+@keyframes feat-bloom-1 {
+  0%, 100% { transform: translate3d(0%, 0%, 0) scale(1); }
+  33%      { transform: translate3d(20%, -12%, 0) scale(1.12); }
+  66%      { transform: translate3d(-10%, 18%, 0) scale(0.92); }
+}
+@keyframes feat-bloom-2 {
+  0%, 100% { transform: translate3d(0%, 0%, 0) scale(1); }
+  33%      { transform: translate3d(-22%, 10%, 0) scale(0.9); }
+  66%      { transform: translate3d(18%, -16%, 0) scale(1.15); }
+}
+@keyframes feat-bloom-3 {
+  0%, 100% { transform: translate3d(0%, 0%, 0) scale(1); }
+  50%      { transform: translate3d(14%, -18%, 0) scale(1.2); }
+}
+.feat-bloom-1 { animation: feat-bloom-1 9s ease-in-out infinite; }
+.feat-bloom-2 { animation: feat-bloom-2 11s ease-in-out infinite; }
+.feat-bloom-3 { animation: feat-bloom-3 13s ease-in-out infinite; }
+
+/* Variant 2 — Sweep: wide ellipses sliding horizontally */
+@keyframes feat-sweep-1 {
+  0%, 100% { transform: translate3d(-12%, 0, 0) scaleX(1); }
+  50%      { transform: translate3d(14%, -4%, 0) scaleX(1.08); }
+}
+@keyframes feat-sweep-2 {
+  0%, 100% { transform: translate3d(15%, 0, 0) scaleX(1); }
+  50%      { transform: translate3d(-18%, 6%, 0) scaleX(1.1); }
+}
+@keyframes feat-sweep-3 {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(-6%, -8%, 0) scale(1.15); }
+}
+.feat-sweep-1 { animation: feat-sweep-1 8s ease-in-out infinite; }
+.feat-sweep-2 { animation: feat-sweep-2 10s ease-in-out infinite; }
+.feat-sweep-3 { animation: feat-sweep-3 7s ease-in-out infinite; }
+
+/* Variant 3 — Scatter: many small dense dots, scattered drift + pulse */
+@keyframes feat-scatter-1 {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(18%, 14%, 0) scale(1.35); }
+}
+@keyframes feat-scatter-2 {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.1); }
+  50%      { transform: translate3d(-16%, -22%, 0) scale(0.85); }
+}
+@keyframes feat-scatter-3 {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(0.95); }
+  50%      { transform: translate3d(12%, -14%, 0) scale(1.3); }
+}
+@keyframes feat-scatter-4 {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.1); }
+  50%      { transform: translate3d(-20%, 12%, 0) scale(0.9); }
+}
+@keyframes feat-scatter-5 {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(16%, 22%, 0) scale(1.25); }
+}
+@keyframes feat-scatter-6 {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.05); }
+  50%      { transform: translate3d(-14%, -8%, 0) scale(0.8); }
+}
+.feat-scatter-1 { animation: feat-scatter-1 6s ease-in-out infinite; }
+.feat-scatter-2 { animation: feat-scatter-2 8s ease-in-out infinite; }
+.feat-scatter-3 { animation: feat-scatter-3 7s ease-in-out infinite; }
+.feat-scatter-4 { animation: feat-scatter-4 9s ease-in-out infinite; }
+.feat-scatter-5 { animation: feat-scatter-5 7.5s ease-in-out infinite; }
+.feat-scatter-6 { animation: feat-scatter-6 10s ease-in-out infinite; }
+
+/* Variant 4 — Orbit: pulsing core + two satellites tracing circular paths */
+@keyframes feat-orbit-core {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.18); }
+}
+@keyframes feat-orbit-1 {
+  0%   { transform: translate3d(90px, 0, 0); }
+  25%  { transform: translate3d(0, 90px, 0); }
+  50%  { transform: translate3d(-90px, 0, 0); }
+  75%  { transform: translate3d(0, -90px, 0); }
+  100% { transform: translate3d(90px, 0, 0); }
+}
+@keyframes feat-orbit-2 {
+  0%   { transform: translate3d(-120px, 0, 0); }
+  25%  { transform: translate3d(0, -120px, 0); }
+  50%  { transform: translate3d(120px, 0, 0); }
+  75%  { transform: translate3d(0, 120px, 0); }
+  100% { transform: translate3d(-120px, 0, 0); }
+}
+.feat-orbit-core { animation: feat-orbit-core 6s ease-in-out infinite; }
+.feat-orbit-1    { animation: feat-orbit-1 9s linear infinite; }
+.feat-orbit-2    { animation: feat-orbit-2 13s linear infinite; }
+
+/* Code block syntax tokens */
+.code-block       { color: var(--color-code-text); }
+.tok-cmt          { color: var(--color-code-mute); font-style: italic; }
+.tok-str          { color: var(--color-code-string); }
+.tok-key          { color: var(--color-code-key); }
+.tok-type         { color: var(--color-code-type); }
+.tok-fn           { color: var(--color-code-fn); }
+.tok-num          { color: var(--color-code-string); }
+.tok-attr         { color: var(--color-code-attr); }
