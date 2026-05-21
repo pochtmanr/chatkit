@@ -4,6 +4,7 @@ import { getServerClient } from "@/lib/supabase/server";
 import { BusinessProfileForm } from "@/app/dashboard/_components/settings/BusinessProfileForm";
 import { ProjectsList } from "@/app/dashboard/_components/settings/ProjectsList";
 import { InboxesList } from "@/app/dashboard/_components/settings/InboxesList";
+import { AllowedOriginsCard } from "@/app/dashboard/_components/settings/AllowedOriginsCard";
 import type { Business } from "@/lib/businesses";
 
 export default async function SettingsBusinessPage({
@@ -25,7 +26,7 @@ export default async function SettingsBusinessPage({
       id, owner_user_id, name, slug, industry, company_size, plan, status,
       onboarding_completed_at, logo_url, address_line1, address_line2,
       city, region, postal_code, country, contact_email, contact_phone,
-      website_url, about
+      website_url, about, allowed_origins
     `,
     )
     .eq("id", ctx.business.id)
@@ -60,6 +61,11 @@ export default async function SettingsBusinessPage({
       )}
 
       <BusinessProfileForm business={business as Business} />
+
+      <AllowedOriginsCard
+        businessId={business.id}
+        origins={(business as Business).allowed_origins ?? []}
+      />
 
       <ProjectsList groups={ctx.groups} />
 

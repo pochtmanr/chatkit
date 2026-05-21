@@ -1,27 +1,27 @@
 /**
  * Embed authentication.
  *
- * Strategy: tenant API key + Referer/Origin check.
+ * Strategy: tenant API key + per-business Origin/Referer allowlist.
  *
- *   1. The iframe URL carries `?key=<tenant api key>`.
- *   2. We look up the tenant by that key (same lookup as authTenant on
- *      the /api/v1/* surface).
+ *   1. The iframe URL carries `?key=<inbox api key>`.
+ *   2. We look up the inbox by api_key and join its parent business.
  *   3. We check the request's Origin (or Referer if Origin is absent —
- *      browsers don't always send Origin on GET) against the allowed
- *      origins list, so a leaked key can only be used from a known
- *      host. Default allowlist comes from EMBED_ALLOWED_ORIGINS env
- *      var (same one that drives CSP frame-ancestors in next.config).
+ *      browsers don't always send Origin on GET) against that
+ *      business's `allowed_origins` column. Each business edits its
+ *      own list at /dashboard/settings/business; there is no env
+ *      override anymore.
  *
- * Why not JWT: we already have a per-tenant secret (the API key) and
- * the host (e.g. GoDelivery admin) gates page access on its own side.
- * The Referer check adds defense-in-depth: even if the key leaks, it
- * can't be replayed from a different origin without compromising the
- * allowed origin first.
+ * Migration history:
+ *   - 0013 moved api_key off `businesses` onto `inboxes`.
+ *   - 0020 added `businesses.allowed_origins text[]` — the per-tenant
+ *     allowlist this module reads from. Before 0020 we relied on the
+ *     process-wide EMBED_ALLOWED_ORIGINS env var (now removed).
  *
- * Trade-off: every agent's replies show as a single tenant-level
- * sender (we don't carry per-admin identity through). If that
- * matters later we can move to JWT or add a sub-claim parameter
- * without ripping out the API-key path.
+ * Why not JWT: we already have a per-tenant secret (the inbox API key)
+ * and the embedding host gates page access on its own side. The
+ * Origin check adds defense-in-depth: even if the key leaks, it
+ * can't be replayed from a different origin without compromising
+ * the allowed origin first.
  */
 
 import { headers } from "next/headers";
@@ -30,9 +30,8 @@ import { getServiceClient } from "@/lib/supabase/server";
 export interface EmbedSession {
   tenantId: string;
   tenantName: string;
-  /** Inbox the embed key belongs to (migration 0013). Callers writing
-   *  `conversations` rows pass this as `inbox_id` (NOT NULL since the
-   *  migration). `tenantId` stays in place for `tenant_id` columns. */
+  /** Inbox the embed key belongs to. Callers writing `conversations`
+   *  rows pass this as `inbox_id` (NOT NULL since 0013). */
   inboxId: string;
 }
 
@@ -41,15 +40,6 @@ class EmbedAuthError extends Error {
     super(`embed auth failed: ${reason}`);
     this.name = "EmbedAuthError";
   }
-}
-
-/** Allowed iframe origins. Mirrors the CSP frame-ancestors list. */
-function allowedOrigins(): string[] {
-  const envList = process.env.EMBED_ALLOWED_ORIGINS;
-  if (!envList) return [];
-  return Array.from(
-    new Set(envList.split(",").map((s) => s.trim()).filter(Boolean)),
-  );
 }
 
 /** Pull the request origin from the headers. Prefers Origin (always
@@ -80,21 +70,53 @@ async function selfOrigin(): Promise<string | null> {
   return host ? `${proto}://${host}` : null;
 }
 
+/** Look up an inbox + its business by API key. Returns the bare row
+ *  callers need; throws EmbedAuthError if the key is unknown or the
+ *  business is suspended. */
+async function lookupInbox(key: string): Promise<{
+  inboxId: string;
+  businessId: string;
+  businessName: string;
+  businessStatus: string;
+  allowedOrigins: string[];
+}> {
+  const service = getServiceClient();
+  const { data, error } = await service
+    .from("inboxes")
+    .select(`
+      id,
+      business:businesses (id, name, status, allowed_origins)
+    `)
+    .eq("api_key", key)
+    .maybeSingle();
+  if (error || !data || !data.business) throw new EmbedAuthError("invalid key");
+  const b = Array.isArray(data.business) ? data.business[0] : data.business;
+  return {
+    inboxId: data.id,
+    businessId: b.id,
+    businessName: b.name,
+    businessStatus: b.status,
+    allowedOrigins: Array.isArray(b.allowed_origins) ? b.allowed_origins : [],
+  };
+}
+
 export async function verifyEmbedKey(key: string | undefined | null): Promise<EmbedSession> {
   if (!key) throw new EmbedAuthError("missing key");
   if (!key.startsWith("pk_live_") && !key.startsWith("pk_test_")) {
     throw new EmbedAuthError("invalid key format");
   }
 
-  // Domain check first — cheaper than the DB lookup, and we don't
-  // want to leak whether a key is valid to a caller from the wrong
-  // origin.
+  // Resolve the key first so we know which business's allowlist to
+  // consult. (Pre-0020 we checked the env list before the DB; with
+  // a per-business list we have to hit the DB anyway, and doing it
+  // up front keeps the code linear.)
+  const inbox = await lookupInbox(key);
+  if (inbox.businessStatus !== "active") {
+    throw new EmbedAuthError(`tenant ${inbox.businessStatus}`);
+  }
+
   const origin = await requestOrigin();
   const self = await selfOrigin();
-  const allowed = allowedOrigins();
-  // Localhost/dev mode is permitted when no origin restrictions match
-  // and we're explicitly in dev. Prevents the "I'm testing locally and
-  // nothing works" pit-trap.
   const isDev = process.env.NODE_ENV !== "production";
   if (!origin && !isDev) throw new EmbedAuthError("missing origin/referer");
   // Same-origin requests (chat-admin → chat-admin internal navigation
@@ -102,22 +124,31 @@ export async function verifyEmbedKey(key: string | undefined | null): Promise<Em
   // always pass. The host-side iframe is what's gated by the allowlist.
   if (origin && self && origin === self) {
     // ok — internal link
-  } else if (origin && !allowed.includes(origin)) {
+  } else if (origin && !inbox.allowedOrigins.includes(origin)) {
     throw new EmbedAuthError(`origin not allowed: ${origin}`);
   }
 
-  const service = getServiceClient();
-  const { data, error } = await service
-    .from("inboxes")
-    .select(`
-      id, api_key,
-      business:businesses (id, name, status)
-    `)
-    .eq("api_key", key)
-    .maybeSingle();
-  if (error || !data || !data.business) throw new EmbedAuthError("invalid key");
-  const business = Array.isArray(data.business) ? data.business[0] : data.business;
-  if (business.status !== "active") throw new EmbedAuthError(`tenant ${business.status}`);
+  return {
+    tenantId: inbox.businessId,
+    tenantName: inbox.businessName,
+    inboxId: inbox.inboxId,
+  };
+}
 
-  return { tenantId: business.id, tenantName: business.name, inboxId: data.id };
+/** Frame-ancestors list for the CSP header on /embed/* responses.
+ *  Looks up the business by inbox API key; returns ["'self'"] alone
+ *  if the key is unknown so the browser blocks unknown embeds. */
+export async function frameAncestorsForKey(
+  key: string | undefined | null,
+): Promise<string[]> {
+  if (!key || (!key.startsWith("pk_live_") && !key.startsWith("pk_test_"))) {
+    return ["'self'"];
+  }
+  try {
+    const inbox = await lookupInbox(key);
+    if (inbox.businessStatus !== "active") return ["'self'"];
+    return ["'self'", ...inbox.allowedOrigins];
+  } catch {
+    return ["'self'"];
+  }
 }

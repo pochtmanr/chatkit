@@ -21,10 +21,12 @@ export type Business = {
   contact_phone: string | null;
   website_url: string | null;
   about: string | null;
+  // Per-business iframe allowlist (migration 0020).
+  allowed_origins: string[];
 };
 
 const BUSINESS_COLUMNS =
-  "id, name, slug, plan, status, industry, company_size, onboarding_completed_at, logo_url, address_line1, address_line2, city, region, postal_code, country, contact_email, contact_phone, website_url, about";
+  "id, name, slug, plan, status, industry, company_size, onboarding_completed_at, logo_url, address_line1, address_line2, city, region, postal_code, country, contact_email, contact_phone, website_url, about, allowed_origins";
 
 /** Returns the user's businesses ordered by created_at asc. RLS scopes
  *  the result to those they own. The 2-business cap means the array

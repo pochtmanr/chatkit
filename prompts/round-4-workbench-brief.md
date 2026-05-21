@@ -104,7 +104,7 @@ prompts):
 | C | **Workbench UI**                       | Dedicated `/workbench` route — queue of unassigned + per-agent active conversations.        |
 | D | **Auto-assignment**                    | Route new conversations to online agents (round-robin or least-loaded).                     |
 | E | **Presence**                           | Online / away / offline; agent must be online to receive auto-assignments.                  |
-| F | **Modern webhook + integration settings** | Redesign `/dashboard/webhooks` — signed secret rotation, per-event filters, test-fire button. |
+| F | **Modern webhook + integration settings** | Redesign `/dashboard/webhooks` — signed secret rotation, per-event filters, test-fire button. (Per-business embed allowlist + test-connection already shipped in `/dashboard/settings/business`; that pattern is the template.) |
 | G | **Refactor pass**                      | Split `ThreadPanel.tsx` (635 lines). Hunt any other file ≥ 600 the round touches.           |
 
 Agent identities + auth + Workbench UI is the spine. Auto-assignment
@@ -156,7 +156,9 @@ that when `conversations.assigned_to` is set, the response carries
 a generic title.
 
 **Affected files** (paths only):
-- New migration `0020_support_agents.sql`.
+- New migration `0021_support_agents.sql`. (0020 is taken by
+  `0020_business_allowed_origins.sql`, landed in the per-business
+  embed allowlist work.)
 - `src/lib/team.ts` — already exists (round 3 scaffold). Extend
   with `listAgents`, `getAgent`, presence helpers.
 - `src/app/dashboard/_actions/team.ts` — new.
@@ -231,7 +233,7 @@ Authorisation:
   Confirm.
 
 **Affected files**:
-- New migration `0021_invitations_and_agent_role.sql`.
+- New migration `0022_invitations_and_agent_role.sql`.
 - New route `/invite/[token]/page.tsx` + accept server action.
 - `src/app/dashboard/settings/team/page.tsx` — already exists as
   a placeholder, fill in.
@@ -333,7 +335,7 @@ queue badge in Workbench surfaces it.
   in N minutes.
 
 **Affected files**:
-- Migration `0022_auto_assignment.sql` (function + triggers).
+- Migration `0023_auto_assignment.sql` (function + triggers).
 - `src/app/dashboard/_actions/conversations.ts` — add manual
   claim/transfer actions.
 - `src/lib/realtime.ts` — broadcast "assignment changed" event.
@@ -420,7 +422,9 @@ The "more modern chat integration" piece likely also wants:
   whether v0.x should be HMAC-SHA256 standard.
 
 **Affected files**:
-- Migration `0023_inbox_webhook_events_and_allowlist.sql`.
+- Migration `0024_inbox_webhook_events.sql`. (Per-business allowlist
+  is already shipped in 0020; the webhook redesign just needs the
+  per-event opt-in column on inboxes.)
 - `src/lib/tenant-webhook.ts` — filter by `webhook_events`.
 - `src/app/dashboard/webhooks/page.tsx` — full UI rebuild.
 - New `src/app/dashboard/_components/webhooks/*` for delivery
@@ -461,19 +465,19 @@ prompts/round-4-workbench/
 ├── 0-shared.md                    — round contracts: agent role enum,
 │                                     presence states, assignment algo,
 │                                     middleware redirect rules, 600-cap.
-├── 1-agents-schema.md             — migration 0020, support_agents +
+├── 1-agents-schema.md             — migration 0021, support_agents +
 │                                     avatars bucket, listAgents helpers.
-├── 2-invites.md                   — migration 0021, invitations table,
+├── 2-invites.md                   — migration 0022, invitations table,
 │                                     /invite/[token] route, Resend
 │                                     email, middleware role gates.
 ├── 3-workbench-ui.md              — /workbench route group, queue panes,
 │                                     thread view reuse, presence indicator.
-├── 4-auto-assignment.md           — migration 0022, assign_conversation
+├── 4-auto-assignment.md           — migration 0023, assign_conversation
 │                                     function + triggers, manual claim
 │                                     server actions.
 ├── 5-presence.md                  — Realtime presence channel + DB
 │                                     heartbeat, agent status UI toggle.
-├── 6-webhooks-redesign.md         — migration 0023, webhook_events column,
+├── 6-webhooks-redesign.md         — migration 0024, webhook_events column,
 │                                     allowlist editor, redesigned page,
 │                                     delivery log + test-fire UI.
 └── 7-refactor-threadpanel.md      — split ThreadPanel into 4 files;

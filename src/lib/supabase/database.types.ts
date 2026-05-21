@@ -51,6 +51,7 @@ export type Database = {
           about: string | null
           address_line1: string | null
           address_line2: string | null
+          allowed_origins: string[]
           city: string | null
           company_size: string | null
           contact_email: string | null
@@ -92,6 +93,7 @@ export type Database = {
           about?: string | null
           address_line1?: string | null
           address_line2?: string | null
+          allowed_origins?: string[]
           city?: string | null
           company_size?: string | null
           contact_email?: string | null
@@ -133,6 +135,7 @@ export type Database = {
           about?: string | null
           address_line1?: string | null
           address_line2?: string | null
+          allowed_origins?: string[]
           city?: string | null
           company_size?: string | null
           contact_email?: string | null
