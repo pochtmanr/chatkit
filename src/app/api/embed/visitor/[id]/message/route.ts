@@ -1,8 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getServiceClient } from "@/lib/supabase/server";
 import { verifyEmbedKey } from "@/lib/embed-auth";
-import { broadcastMessage } from "@/lib/realtime";
-import { fireTenantWebhook } from "@/lib/tenant-webhook";
+import { broadcastMessage, broadcastStatus } from "@/lib/realtime";
+import {
+  fireConversationStatusChanged,
+  fireTenantWebhook,
+} from "@/lib/tenant-webhook";
+import { updateConversationStatusFromMessage } from "@/lib/conversation-status-server";
 
 /**
  * Visitor-side message endpoint. Pairs with /api/embed/visitor/start.
@@ -133,7 +137,9 @@ export async function POST(
     .insert({
       tenant_id: conv.tenant_id,
       conversation_id: conv.id,
-      sender_id: visitorId,
+      // authConversation has already returned an err response when
+      // visitorId is null, so it's safe to assert here.
+      sender_id: visitorId!,
       receiver_id: null,
       body,
       message_type: "text",
@@ -146,6 +152,11 @@ export async function POST(
       { status: 500 },
     );
   }
+
+  const statusChange = await updateConversationStatusFromMessage({
+    conversationId: conv.id,
+    direction: "inbound",
+  });
 
   await service
     .from("conversations")
@@ -164,6 +175,23 @@ export async function POST(
   }).catch((err) =>
     console.warn("[visitor/message] webhook fire failed:", err),
   );
+
+  if (statusChange) {
+    const changedAt = new Date().toISOString();
+    void fireConversationStatusChanged({
+      conversationId: conv.id,
+      previousStatus: statusChange.previous,
+      newStatus: statusChange.next,
+      changedBy: "system",
+      changedByUserId: null,
+    });
+    void broadcastStatus(conv.id, {
+      previousStatus: statusChange.previous,
+      newStatus: statusChange.next,
+      changedAt,
+      changedByUserId: null,
+    });
+  }
 
   return NextResponse.json({ message });
 }

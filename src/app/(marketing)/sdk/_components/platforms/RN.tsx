@@ -12,13 +12,13 @@ export function RnDocs() {
         </p>
         <CodeBlock
           lang="bash"
-          code={`npm i @tinychat/react-native
+          code={`npm i @chatkit/react-native
 # expo install @react-native-async-storage/async-storage`}
         />
         <CodeBlock
           lang="bash"
           filename=".env"
-          code={`EXPO_PUBLIC_TINYCHAT_KEY=pk_live_xxxxxxxxxxxx`}
+          code={`EXPO_PUBLIC_CHATKIT_KEY=pk_live_xxxxxxxxxxxx`}
         />
       </Section>
 
@@ -26,7 +26,7 @@ export function RnDocs() {
         <p className="text-deep/70 leading-relaxed">
           Wrap your navigator in{" "}
           <code className="font-mono text-[13px] bg-mist/60 px-1.5 py-0.5 rounded">
-            TinyChatProvider
+            ChatKitProvider
           </code>
           . The provider mounts an in-app FAB and a full-screen conversation
           view; both are themeable.
@@ -34,13 +34,13 @@ export function RnDocs() {
         <CodeBlock
           lang="tsx"
           filename="App.tsx"
-          code={`import { TinyChatProvider } from "@tinychat/react-native";
+          code={`import { ChatKitProvider } from "@chatkit/react-native";
 
 export default function App() {
   return (
-    <TinyChatProvider apiKey={process.env.EXPO_PUBLIC_TINYCHAT_KEY}>
+    <ChatKitProvider apiKey={process.env.EXPO_PUBLIC_CHATKIT_KEY}>
       <RootNavigator />
-    </TinyChatProvider>
+    </ChatKitProvider>
   );
 }`}
         />
@@ -63,10 +63,10 @@ export default function App() {
         </p>
         <CodeBlock
           lang="tsx"
-          code={`import { useTinyChat } from "@tinychat/react-native";
+          code={`import { useChatKit } from "@chatkit/react-native";
 
-const tinychat = useTinyChat();
-tinychat.identify({
+const chatkit = useChatKit();
+chatkit.identify({
   id: user.id,
   name: user.fullName,
   email: user.email,
@@ -90,7 +90,7 @@ tinychat.identify({
         </p>
         <CodeBlock
           lang="tsx"
-          code={`tinychat.open({
+          code={`chatkit.open({
   externalRef: order.id,
   kind: "order",
   participants: [user.id, driver.id],
@@ -104,12 +104,12 @@ tinychat.identify({
         </p>
         <CodeBlock
           lang="tsx"
-          code={`tinychat.on("message", (m) => {
+          code={`chatkit.on("message", (m) => {
   if (!m.fromSelf) bumpUnread();
 });
 
-tinychat.on("toggle", (open) => {
-  analytics.track("tinychat_toggle", { open });
+chatkit.on("toggle", (open) => {
+  analytics.track("chatkit_toggle", { open });
 });`}
         />
       </Section>

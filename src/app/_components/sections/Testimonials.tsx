@@ -50,7 +50,7 @@ const TESTIMONIALS = [
     name: "Maya Kowalski",
     role: "Engineer at GoDelivery",
     quote:
-      "We replaced a half-built Zendesk integration with TinyChat in one afternoon. Our drivers and customers talk through it now and we never touched the backend.",
+      "We replaced a half-built Zendesk integration with ChatKit in one afternoon. Our drivers and customers talk through it now and we never touched the backend.",
   },
   {
     initials: "DR",

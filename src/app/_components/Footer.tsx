@@ -2,18 +2,6 @@ import Image from "next/image";
 import Link from "next/link";
 import type { SVGProps } from "react";
 
-function LogoIcon() {
-  return (
-    <Image
-      src="/tclogo.png"
-      alt="TinyChat"
-      width={36}
-      height={36}
-      className="h-9 w-9"
-    />
-  );
-}
-
 function TwitterIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
@@ -83,9 +71,16 @@ function FooterCard() {
             {/* Brand */}
             <div className="lg:col-span-2 space-y-8">
               <Link href="/" className="flex items-center gap-2.5 w-fit">
-                <LogoIcon />
-                <span className="text-[26px] tracking-tight text-ink">
-                  TinyChat
+                <Image
+                  src="/chatkit.png"
+                  alt="ChatKit"
+                  width={765}
+                  height={649}
+                  priority
+                  className="h-6 w-auto"
+                />
+                <span className="font-medium text-lg tracking-tight text-ink">
+                  ChatKit
                 </span>
               </Link>
 
@@ -134,7 +129,7 @@ function FooterCard() {
         {/* Bottom legal bar (inside outer mist, outside white box) */}
         <div className="px-6 sm:px-12 md:px-16 lg:px-20 py-5 flex flex-col md:flex-row justify-between items-center gap-6 text-[15px]">
           <p className="text-deep/70 font-medium">
-            © {new Date().getFullYear()} TinyChat. All rights reserved.
+            © {new Date().getFullYear()} ChatKit. All rights reserved.
           </p>
           <div className="flex gap-8 text-deep/70 font-medium items-center">
             <a href="#" className="hover:text-ink transition-colors">

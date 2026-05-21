@@ -9,7 +9,7 @@ export function ContactCard({ hasWidget = false }: { hasWidget?: boolean }) {
             <div>
               <p className="text-[14px] font-medium text-deep/60">Live chat</p>
               <h2 className="mt-4 text-4xl sm:text-5xl tracking-tight text-ink leading-[1] font-normal">
-                We use TinyChat{" "}
+                We use ChatKit{" "}
                 <span className="font-serif-italic text-deep">
                   for our own support<span className="text-deep/40">.</span>
                 </span>
@@ -22,7 +22,7 @@ export function ContactCard({ hasWidget = false }: { hasWidget?: boolean }) {
               {hasWidget ? (
                 <button
                   type="button"
-                  data-tinychat-open
+                  data-chatkit-open
                   className="mt-8 group inline-flex items-center gap-2 rounded-full bg-ink text-white pl-5 pr-2 py-2 text-[15px] shadow-lg shadow-ink/10 hover:bg-deep transition-colors"
                 >
                   Open the widget
@@ -32,7 +32,7 @@ export function ContactCard({ hasWidget = false }: { hasWidget?: boolean }) {
                 </button>
               ) : (
                 <a
-                  href="mailto:support@tinychat.dev"
+                  href="mailto:support@chatkit.cc"
                   className="mt-8 group inline-flex items-center gap-2 rounded-full bg-ink text-white pl-5 pr-2 py-2 text-[15px] shadow-lg shadow-ink/10 hover:bg-deep transition-colors"
                 >
                   Email support

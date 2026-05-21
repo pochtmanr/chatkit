@@ -12,7 +12,7 @@ export function IosDocs() {
         <CodeBlock
           lang="swift"
           filename="Package.swift"
-          code={`.package(url: "https://github.com/tinychat/tinychat-swift", from: "0.2.0")`}
+          code={`.package(url: "https://github.com/chatkit/chatkit-swift", from: "0.2.0")`}
         />
         <p className="text-deep/70 leading-relaxed">
           Store the publishable key somewhere reachable from your app target —{" "}
@@ -35,7 +35,7 @@ export function IosDocs() {
         <p className="text-deep/70 leading-relaxed">
           Call{" "}
           <code className="font-mono text-[13px] bg-mist/60 px-1.5 py-0.5 rounded">
-            TinyChat.configure
+            ChatKit.configure
           </code>{" "}
           from your{" "}
           <code className="font-mono text-[13px] bg-mist/60 px-1.5 py-0.5 rounded">
@@ -46,12 +46,12 @@ export function IosDocs() {
         <CodeBlock
           lang="swift"
           filename="MyApp.swift"
-          code={`import TinyChat
+          code={`import ChatKit
 
 @main
 struct MyApp: App {
   init() {
-    TinyChat.configure(apiKey: Env.tinychatKey)
+    ChatKit.configure(apiKey: Env.chatkitKey)
   }
   var body: some Scene {
     WindowGroup { ContentView() }
@@ -71,7 +71,7 @@ struct MyApp: App {
         </p>
         <CodeBlock
           lang="swift"
-          code={`TinyChat.identify(
+          code={`ChatKit.identify(
   id: user.id,
   name: user.name,
   email: user.email,
@@ -94,7 +94,7 @@ struct MyApp: App {
         </p>
         <CodeBlock
           lang="swift"
-          code={`TinyChat.present(
+          code={`ChatKit.present(
   from: viewController,
   kind: .order,
   externalRef: order.id
@@ -106,17 +106,17 @@ struct MyApp: App {
         <p className="text-deep/70 leading-relaxed">
           Subscribe to the publishers exposed on{" "}
           <code className="font-mono text-[13px] bg-mist/60 px-1.5 py-0.5 rounded">
-            TinyChat.events
+            ChatKit.events
           </code>{" "}
           to update unread counts or fire analytics.
         </p>
         <CodeBlock
           lang="swift"
-          code={`TinyChat.events.onMessage { message in
+          code={`ChatKit.events.onMessage { message in
   print("inbound", message)
 }
 
-TinyChat.events.onToggle { isOpen in
+ChatKit.events.onToggle { isOpen in
   print("widget open:", isOpen)
 }`}
         />

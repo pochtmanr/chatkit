@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const auth = await authTenant(request);
   if ("error" in auth) return auth.error;
-  const tenant = auth.tenant;
+  const { tenant, inbox } = auth;
 
   let payload: {
     kind?: "order" | "support" | "direct";
@@ -104,6 +104,7 @@ export async function POST(request: NextRequest) {
     .from("conversations")
     .insert({
       tenant_id: tenant.id,
+      inbox_id: inbox.id,
       kind: payload.kind,
       external_ref: payload.external_ref ?? null,
       participants,

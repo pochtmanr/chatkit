@@ -30,6 +30,10 @@ import { getServiceClient } from "@/lib/supabase/server";
 export interface EmbedSession {
   tenantId: string;
   tenantName: string;
+  /** Inbox the embed key belongs to (migration 0013). Callers writing
+   *  `conversations` rows pass this as `inbox_id` (NOT NULL since the
+   *  migration). `tenantId` stays in place for `tenant_id` columns. */
+  inboxId: string;
 }
 
 class EmbedAuthError extends Error {
@@ -110,12 +114,16 @@ export async function verifyEmbedKey(key: string | undefined | null): Promise<Em
 
   const service = getServiceClient();
   const { data, error } = await service
-    .from("tenants")
-    .select("id, name, status, api_key")
+    .from("inboxes")
+    .select(`
+      id, api_key,
+      business:businesses (id, name, status)
+    `)
     .eq("api_key", key)
     .maybeSingle();
-  if (error || !data) throw new EmbedAuthError("invalid key");
-  if (data.status !== "active") throw new EmbedAuthError(`tenant ${data.status}`);
+  if (error || !data || !data.business) throw new EmbedAuthError("invalid key");
+  const business = Array.isArray(data.business) ? data.business[0] : data.business;
+  if (business.status !== "active") throw new EmbedAuthError(`tenant ${business.status}`);
 
-  return { tenantId: data.id, tenantName: data.name };
+  return { tenantId: business.id, tenantName: business.name, inboxId: data.id };
 }

@@ -24,7 +24,7 @@ export function VanillaDocs() {
         <CodeBlock
           lang="tsx"
           filename="index.html"
-          code={`<script src="https://cdn.tinychat.dev/v1/widget.js" defer></script>`}
+          code={`<script src="https://cdn.chatkit.cc/v1/widget.js" defer></script>`}
         />
       </Section>
 
@@ -32,7 +32,7 @@ export function VanillaDocs() {
         <p className="text-deep/70 leading-relaxed">
           The loader exposes a queue on{" "}
           <code className="font-mono text-[13px] bg-mist/60 px-1.5 py-0.5 rounded">
-            window.tinychat
+            window.chatkit
           </code>
           . Calls made before the script finishes loading are replayed once
           it&apos;s ready, so order is forgiving.
@@ -40,8 +40,8 @@ export function VanillaDocs() {
         <CodeBlock
           lang="tsx"
           code={`<script>
-  window.tinychat = window.tinychat || [];
-  window.tinychat.push(["init", { apiKey: "pk_live_xxxxxxxxxxxx" }]);
+  window.chatkit = window.chatkit || [];
+  window.chatkit.push(["init", { apiKey: "pk_live_xxxxxxxxxxxx" }]);
 </script>`}
         />
         <p className="text-deep/70 leading-relaxed">
@@ -81,7 +81,7 @@ export function VanillaDocs() {
         </p>
         <CodeBlock
           lang="tsx"
-          code={`window.tinychat.push([
+          code={`window.chatkit.push([
   "identify",
   {
     id: "u_123",
@@ -106,7 +106,7 @@ export function VanillaDocs() {
           code={`document
   .querySelector("#need-help")
   .addEventListener("click", () => {
-    window.tinychat.push([
+    window.chatkit.push([
       "open",
       { kind: "support", externalRef: "site_support" },
     ]);
@@ -121,13 +121,13 @@ export function VanillaDocs() {
         </p>
         <CodeBlock
           lang="tsx"
-          code={`window.tinychat.push([
+          code={`window.chatkit.push([
   "on",
   "message",
   (m) => console.log("inbound", m),
 ]);
 
-window.tinychat.push([
+window.chatkit.push([
   "on",
   "toggle",
   (open) => console.log("widget open:", open),

@@ -5,9 +5,9 @@ import { ArrowRight } from "lucide-react";
 import { PlatformTabs } from "./_components/PlatformTabs";
 
 export const metadata: Metadata = {
-  title: "SDK reference — TinyChat",
+  title: "SDK reference — ChatKit",
   description:
-    "Install and integrate TinyChat on Next.js, React Native, iOS, Android, or any web page in under 5 minutes.",
+    "Install and integrate ChatKit on Next.js, React Native, iOS, Android, or any web page in under 5 minutes.",
 };
 
 export default function SdkPage() {

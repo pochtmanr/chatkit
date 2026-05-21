@@ -114,6 +114,7 @@ export async function POST(request: NextRequest) {
     .from("conversations")
     .insert({
       tenant_id: session.tenantId,
+      inbox_id: session.inboxId,
       kind: payload.kind,
       external_ref: payload.external_ref,
       participants,

@@ -1,58 +1,79 @@
-import { revalidatePath } from "next/cache";
-import { getServerClient } from "@/lib/supabase/server";
+import { requireActiveContext } from "@/lib/active-context";
+import { LABELS } from "@/lib/onboarding/enums";
+import { InboxKeyCard } from "./InboxKeyCard";
 
 export default async function ApiKeysPage() {
-  const supabase = await getServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data: tenants } = await supabase
-    .from("tenants")
-    .select("id, name, api_key")
-    .eq("owner_user_id", user!.id);
-
-  async function rotateKey(formData: FormData) {
-    "use server";
-    const tenantId = String(formData.get("tenantId") ?? "");
-    const newKey =
-      "pk_live_" +
-      Array.from(globalThis.crypto.getRandomValues(new Uint8Array(12)), (b) =>
-        b.toString(16).padStart(2, "0"),
-      ).join("");
-    const sb = await getServerClient();
-    await sb.from("tenants").update({ api_key: newKey }).eq("id", tenantId);
-    revalidatePath("/dashboard/api-keys");
-  }
+  const ctx = await requireActiveContext();
 
   return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">API keys</h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          Use this in your app: <code>initChatSDK({"{ apiKey }"})</code>. Treat like a password.
+    <div className="space-y-8">
+      <header className="space-y-3">
+        <p className="text-[14px] font-medium text-deep/60">Integration keys</p>
+        <h1 className="text-3xl sm:text-4xl tracking-tight text-ink leading-[1] font-normal">
+          Your secret{" "}
+          <span className="font-serif-italic font-normal text-deep">
+            keys<span className="text-deep/40">.</span>
+          </span>
+        </h1>
+        <p className="text-deep/70 leading-relaxed text-[15px] font-normal max-w-[640px]">
+          Each inbox has its own{" "}
+          <code className="rounded bg-mist/60 px-1 text-[13px]">pk_live_…</code>{" "}
+          key. Embed the right one in the right surface so conversations land
+          where you expect.
         </p>
       </header>
-      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 divide-y divide-zinc-200 dark:divide-zinc-800">
-        {(tenants ?? []).map((t) => (
-          <div key={t.id} className="p-5 flex items-center gap-4">
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium">{t.name}</div>
-              <code className="mt-1 block text-xs text-zinc-600 dark:text-zinc-400 truncate font-mono">
-                {t.api_key}
-              </code>
-            </div>
-            <form action={rotateKey}>
-              <input type="hidden" name="tenantId" value={t.id} />
-              <button
-                type="submit"
-                className="rounded-lg border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
-              >
-                Rotate
-              </button>
-            </form>
-          </div>
-        ))}
-      </div>
+
+      {ctx.groups.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-mist bg-white/50 p-12 text-center">
+          <p className="text-[15px] text-ink">No inboxes yet.</p>
+          <p className="text-[13px] text-deep/60 mt-1">
+            Add one from the inbox switcher in the sidebar.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-8">
+          {ctx.groups.map((g) => (
+            <section key={g.project.id} className="space-y-3">
+              <h2 className="text-[12px] uppercase tracking-[0.12em] text-deep/50">
+                {g.project.name}
+              </h2>
+              <div className="grid sm:grid-cols-2 gap-3">
+                {g.inboxes.map((ib) => (
+                  <InboxKeyCard
+                    key={ib.id}
+                    inboxId={ib.id}
+                    inboxName={ib.name}
+                    audience={
+                      LABELS.audience[ib.audience as keyof typeof LABELS.audience] ??
+                      ib.audience
+                    }
+                    purpose={
+                      LABELS.purpose[ib.purpose as keyof typeof LABELS.purpose] ??
+                      ib.purpose
+                    }
+                    initialApiKey={ib.api_key}
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
+
+      <aside className="rounded-2xl bg-white border border-mist/80 shadow-[0_1px_2px_rgba(11,11,11,0.04)] p-6 space-y-3">
+        <h2 className="text-[16px] font-medium text-ink">How to use</h2>
+        <pre className="rounded-xl bg-ink text-white/90 font-mono text-[12px] px-4 py-3 overflow-x-auto">
+{`import { initChatSDK } from "@holylabs/chat-sdk-web";
+
+initChatSDK({
+  apiKey: "pk_live_…", // ← copy from the inbox above
+});`}
+        </pre>
+        <p className="text-[13px] text-deep/60">
+          Treat keys like passwords. If you suspect a key is leaked, rotate it
+          from the red icon — the old key stops working immediately.
+        </p>
+      </aside>
     </div>
   );
 }

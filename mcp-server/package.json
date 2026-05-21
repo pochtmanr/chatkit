@@ -1,0 +1,33 @@
+{
+  "name": "@holylabs/chatkit-mcp",
+  "version": "0.1.0",
+  "description": "Local stdio MCP server for HolyLabs ChatKit. Lets MCP-aware AI tools talk to your ChatKit conversations.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "chatkit-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@types/node": "^20.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

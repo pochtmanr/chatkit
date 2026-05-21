@@ -17,7 +17,7 @@ export default function FAQ() {
                   </span>
                 </h2>
                 <p className="text-deep/70 leading-relaxed text-[16px] font-normal max-w-[320px]">
-                  Everything you need to know about TinyChat. Can&apos;t find
+                  Everything you need to know about ChatKit. Can&apos;t find
                   what you&apos;re looking for? Drop us a line.
                 </p>
               </div>

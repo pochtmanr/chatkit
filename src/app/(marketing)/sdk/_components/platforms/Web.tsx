@@ -10,11 +10,11 @@ export function WebDocs() {
           Add the React package and your publishable key. The widget renders
           once at the root and follows the user across routes.
         </p>
-        <CodeBlock lang="bash" code={`npm i @tinychat/react`} />
+        <CodeBlock lang="bash" code={`npm i @chatkit/react`} />
         <CodeBlock
           lang="bash"
           filename=".env.local"
-          code={`NEXT_PUBLIC_TINYCHAT_KEY=pk_live_xxxxxxxxxxxx`}
+          code={`NEXT_PUBLIC_CHATKIT_KEY=pk_live_xxxxxxxxxxxx`}
         />
       </Section>
 
@@ -22,7 +22,7 @@ export function WebDocs() {
         <p className="text-deep/70 leading-relaxed">
           Mount{" "}
           <code className="font-mono text-[13px] bg-mist/60 px-1.5 py-0.5 rounded">
-            &lt;TinyChat&gt;
+            &lt;ChatKit&gt;
           </code>{" "}
           once in your root layout. The provider hydrates client-side and
           fetches{" "}
@@ -37,14 +37,14 @@ export function WebDocs() {
         <CodeBlock
           lang="tsx"
           filename="app/layout.tsx"
-          code={`import { TinyChat } from "@tinychat/react";
+          code={`import { ChatKit } from "@chatkit/react";
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
         {children}
-        <TinyChat apiKey={process.env.NEXT_PUBLIC_TINYCHAT_KEY} />
+        <ChatKit apiKey={process.env.NEXT_PUBLIC_CHATKIT_KEY} />
       </body>
     </html>
   );
@@ -72,11 +72,11 @@ export default function RootLayout({ children }) {
           lang="tsx"
           filename="components/identify.tsx"
           code={`"use client";
-import { useTinyChat } from "@tinychat/react";
+import { useChatKit } from "@chatkit/react";
 
 export function IdentifyUser({ user }) {
-  const tinychat = useTinyChat();
-  tinychat.identify({
+  const chatkit = useChatKit();
+  chatkit.identify({
     id: user.id,
     name: user.fullName,
     email: user.email,
@@ -97,7 +97,7 @@ export function IdentifyUser({ user }) {
         </p>
         <CodeBlock
           lang="tsx"
-          code={`tinychat.open({
+          code={`chatkit.open({
   externalRef: orderId,
   kind: "order",
   participants: [user.id, driverId],
@@ -127,11 +127,11 @@ export function IdentifyUser({ user }) {
         </p>
         <CodeBlock
           lang="tsx"
-          code={`tinychat.on("message", (m) => {
+          code={`chatkit.on("message", (m) => {
   console.log("inbound", m);
 });
 
-tinychat.on("toggle", (open) => {
+chatkit.on("toggle", (open) => {
   console.log("widget open:", open);
 });`}
         />

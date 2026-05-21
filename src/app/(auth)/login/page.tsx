@@ -103,7 +103,7 @@ export default async function LoginPage({
 
           {/* Bottom strip — sign up CTA, sits on deep frame */}
           <div className="px-6 sm:px-12 md:px-16 lg:px-20 py-5 flex flex-col md:flex-row justify-between items-center gap-6 text-[15px]">
-            <p className="text-white/70 font-medium">New to TinyChat?</p>
+            <p className="text-white/70 font-medium">New to ChatKit?</p>
             <Link
               href="/signup"
               className="inline-flex items-center gap-2 text-white font-medium hover:text-mist transition-colors"

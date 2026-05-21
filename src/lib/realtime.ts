@@ -20,6 +20,7 @@
  */
 
 import { getServiceClient } from "@/lib/supabase/server";
+import type { ConversationStatus } from "@/lib/conversation-status";
 
 /** Broadcast a new message to subscribers of conv:<conversationId>.
  *  Fire-and-forget at the API level — if the broadcast fails we log
@@ -58,6 +59,56 @@ export async function broadcastMessage(
   } finally {
     // removeChannel is sync but returns a promise — await defensively
     // so we don't leak the WebSocket between requests in a hot lambda.
+    try {
+      await service.removeChannel(channel);
+    } catch {
+      /* ignore cleanup errors */
+    }
+  }
+}
+
+/** Broadcast a status change to subscribers of conv:<conversationId>.
+ *  Same channel as messages so the ThreadView only needs one
+ *  subscription. Fire-and-forget — broadcast hiccups must not break
+ *  the originating action. */
+export async function broadcastStatus(
+  conversationId: string,
+  payload: {
+    previousStatus: ConversationStatus;
+    newStatus: ConversationStatus;
+    changedAt: string;
+    changedByUserId: string | null;
+    transferredToInboxId?: string;
+    transferredNote?: string;
+  },
+): Promise<void> {
+  const service = getServiceClient();
+  const channelName = `conv:${conversationId}`;
+  const channel = service.channel(channelName);
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("subscribe timeout")), 2000);
+      channel.subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          clearTimeout(timer);
+          resolve();
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          clearTimeout(timer);
+          reject(new Error(`subscribe status ${status}`));
+        }
+      });
+    });
+    await channel.send({
+      type: "broadcast",
+      event: "status_changed",
+      payload,
+    });
+  } catch (err) {
+    console.warn("[realtime] status broadcast failed", {
+      channel: channelName,
+      error: err instanceof Error ? err.message : err,
+    });
+  } finally {
     try {
       await service.removeChannel(channel);
     } catch {

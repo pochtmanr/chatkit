@@ -7,7 +7,7 @@ import { getServiceClient } from "@/lib/supabase/server";
  * POST /api/v1/conversations/:id/upload
  *
  * SDK-facing image upload (mobile chat attach button). Tenant API key
- * auth via x-tinychat-api-key, same as the rest of /api/v1/*. Returns
+ * auth via x-chatkit-api-key, same as the rest of /api/v1/*. Returns
  * the public URL; caller then POSTs the message with media_url +
  * message_type='image'.
  *

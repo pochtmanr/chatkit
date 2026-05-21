@@ -39,7 +39,7 @@ const CARDS: Card[] = [
     icon: Mail,
     title: "Email us",
     body: "Reply within 24h on weekdays.",
-    href: "mailto:support@tinychat.dev",
+    href: "mailto:support@chatkit.cc",
     external: true,
   },
 ];

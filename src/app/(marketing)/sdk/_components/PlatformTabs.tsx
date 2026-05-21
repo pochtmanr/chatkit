@@ -17,24 +17,24 @@ type Platform = {
 };
 
 const PLATFORMS: Platform[] = [
-  { id: "web", label: "Next.js / Web", pkg: "@tinychat/react", body: WebDocs },
+  { id: "web", label: "Next.js / Web", pkg: "@chatkit/react", body: WebDocs },
   {
     id: "rn",
     label: "React Native",
-    pkg: "@tinychat/react-native",
+    pkg: "@chatkit/react-native",
     body: RnDocs,
   },
-  { id: "ios", label: "iOS Swift", pkg: "TinyChat (SwiftPM)", body: IosDocs },
+  { id: "ios", label: "iOS Swift", pkg: "ChatKit (SwiftPM)", body: IosDocs },
   {
     id: "android",
     label: "Android",
-    pkg: "dev.tinychat:tinychat",
+    pkg: "cc.chatkit:chatkit",
     body: AndroidDocs,
   },
   {
     id: "vanilla",
     label: "Vanilla JS",
-    pkg: '<script src="tinychat.js">',
+    pkg: '<script src="chatkit.js">',
     body: VanillaDocs,
   },
 ];

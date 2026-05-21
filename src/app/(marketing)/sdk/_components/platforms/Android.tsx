@@ -13,13 +13,13 @@ export function AndroidDocs() {
           lang="kotlin"
           filename="build.gradle.kts"
           code={`dependencies {
-  implementation("dev.tinychat:tinychat:0.2.0")
+  implementation("cc.chatkit:chatkit:0.2.0")
 }`}
         />
         <CodeBlock
           lang="bash"
           filename="local.properties"
-          code={`TINYCHAT_KEY=pk_live_xxxxxxxxxxxx`}
+          code={`CHATKIT_KEY=pk_live_xxxxxxxxxxxx`}
         />
       </Section>
 
@@ -38,7 +38,7 @@ export function AndroidDocs() {
           code={`class MyApp : Application() {
   override fun onCreate() {
     super.onCreate()
-    TinyChat.configure(this, BuildConfig.TINYCHAT_KEY)
+    ChatKit.configure(this, BuildConfig.CHATKIT_KEY)
   }
 }`}
         />
@@ -55,7 +55,7 @@ export function AndroidDocs() {
         </p>
         <CodeBlock
           lang="kotlin"
-          code={`TinyChat.identify(
+          code={`ChatKit.identify(
   id = user.id,
   name = user.name,
   email = user.email,
@@ -78,7 +78,7 @@ export function AndroidDocs() {
         </p>
         <CodeBlock
           lang="kotlin"
-          code={`TinyChat.present(
+          code={`ChatKit.present(
   context = this,
   kind = ConversationKind.ORDER,
   externalRef = order.id
@@ -94,14 +94,14 @@ export function AndroidDocs() {
         <CodeBlock
           lang="kotlin"
           code={`lifecycleScope.launch {
-  TinyChat.events.messages.collect { message ->
-    Log.d("TinyChat", "inbound $message")
+  ChatKit.events.messages.collect { message ->
+    Log.d("ChatKit", "inbound $message")
   }
 }
 
 lifecycleScope.launch {
-  TinyChat.events.toggles.collect { isOpen ->
-    Log.d("TinyChat", "widget open: $isOpen")
+  ChatKit.events.toggles.collect { isOpen ->
+    Log.d("ChatKit", "widget open: $isOpen")
   }
 }`}
         />

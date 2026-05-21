@@ -28,11 +28,11 @@ export default function Install() {
                   <p className="mt-5 text-deep/70 leading-relaxed text-[16px] font-normal">
                     One package per platform, one env var, zero backend. Render
                     the widget, paste your API key, and start receiving tickets
-                    in your TinyChat inbox.
+                    in your ChatKit inbox.
                   </p>
                   <div className="mt-6 inline-flex items-center gap-2 rounded-lg border border-mist bg-mist/40 px-3 py-2 font-mono text-xs text-deep shadow-sm">
                     <span className="text-deep/40">$</span>
-                    npm i @tinychat/react
+                    npm i @chatkit/react
                   </div>
                 </div>
                 <InstallTabs tabs={tabs} />
@@ -64,14 +64,14 @@ const INSTALL_TABS: { label: string; lang: SupportedLang; code: string }[] = [
     label: "Next.js",
     lang: "tsx",
     code: `// app/layout.tsx
-import { TinyChat } from "@tinychat/react";
+import { ChatKit } from "@chatkit/react";
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
         {children}
-        <TinyChat apiKey={process.env.NEXT_PUBLIC_TINYCHAT_KEY} />
+        <ChatKit apiKey={process.env.NEXT_PUBLIC_CHATKIT_KEY} />
       </body>
     </html>
   );
@@ -81,13 +81,13 @@ export default function RootLayout({ children }) {
     label: "React Native",
     lang: "tsx",
     code: `// App.tsx
-import { TinyChatProvider } from "@tinychat/react-native";
+import { ChatKitProvider } from "@chatkit/react-native";
 
 export default function App() {
   return (
-    <TinyChatProvider apiKey={process.env.EXPO_PUBLIC_TINYCHAT_KEY}>
+    <ChatKitProvider apiKey={process.env.EXPO_PUBLIC_CHATKIT_KEY}>
       <RootNavigator />
-    </TinyChatProvider>
+    </ChatKitProvider>
   );
 }`,
   },
@@ -95,12 +95,12 @@ export default function App() {
     label: "iOS Swift",
     lang: "swift",
     code: `// AppDelegate.swift
-import TinyChat
+import ChatKit
 
 @main
 struct MyApp: App {
   init() {
-    TinyChat.configure(apiKey: Env.tinychatKey)
+    ChatKit.configure(apiKey: Env.chatkitKey)
   }
   var body: some Scene {
     WindowGroup { ContentView() }

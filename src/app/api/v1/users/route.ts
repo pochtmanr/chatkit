@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { authTenant, corsHeaders } from "@/lib/api-auth";
 import { getServiceClient } from "@/lib/supabase/server";
+import type { Json } from "@/lib/supabase/database.types";
 
 /**
  * Upsert an end-user from the consumer's app. The SDK calls this once
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
         email: inEmail ?? existing?.email ?? null,
         role: payload.role ?? "customer",
         fcm_tokens: payload.fcm_tokens ?? [],
-        notification_prefs: payload.notification_prefs ?? {},
+        notification_prefs: (payload.notification_prefs ?? {}) as Json,
         last_seen_at: new Date().toISOString(),
       },
       { onConflict: "tenant_id,user_id" },

@@ -2,6 +2,9 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { redirect } from "next/navigation";
 import { getServerClient, getServiceClient } from "@/lib/supabase/server";
+import { Avatar } from "@/app/dashboard/_components/shared/Avatar";
+import { StatusDropdown } from "@/app/dashboard/_components/ui/StatusDropdown";
+import { type ConversationStatus } from "@/lib/conversation-status";
 import { ThreadView } from "./ThreadView";
 
 /**
@@ -29,21 +32,24 @@ export default async function ConversationPage({
   const { data: conv } = await service
     .from("conversations")
     .select(
-      "id, tenant_id, external_ref, kind, last_message, tenants!inner(owner_user_id, name)",
+      "id, tenant_id, inbox_id, external_ref, kind, last_message, status, transferred_note, tenants!inner(owner_user_id, name)",
     )
     .eq("id", id)
     .maybeSingle();
   type ConvRow = {
     id: string;
     tenant_id: string;
+    inbox_id: string;
     external_ref: string | null;
     kind: string;
+    status: string;
+    transferred_note: string | null;
     tenants: { owner_user_id: string; name: string };
   };
   const c = conv as unknown as ConvRow | null;
   if (!c || c.tenants.owner_user_id !== user.id) {
     return (
-      <div className="text-sm text-zinc-500">
+      <div className="text-sm text-deep/60">
         Conversation not found.{" "}
         <Link href="/dashboard/inbox" className="underline">
           Back to inbox
@@ -61,6 +67,23 @@ export default async function ConversationPage({
         .eq("user_id", c.external_ref)
         .maybeSingle()
     : { data: null };
+
+  const { data: inboxRow } = await service
+    .from("inboxes")
+    .select("name")
+    .eq("id", c.inbox_id)
+    .maybeSingle();
+  const inboxName = inboxRow?.name ?? "Inbox";
+
+  // Sibling inboxes — destinations for an internal transfer.
+  const { data: siblingInboxes } = await service
+    .from("inboxes")
+    .select("id, name")
+    .eq("business_id", c.tenant_id)
+    .is("archived_at", null)
+    .neq("id", c.inbox_id)
+    .order("name", { ascending: true });
+
   const displayName =
     counterpart?.name ||
     counterpart?.email ||
@@ -78,24 +101,36 @@ export default async function ConversationPage({
   const initialMessages = (rows ?? []).reverse();
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-4rem)] -m-8">
-      <header className="border-b border-zinc-200 dark:border-zinc-800 px-6 py-3 flex items-center gap-3 bg-white dark:bg-zinc-950">
+    <div className="flex flex-col h-[calc(100dvh-4rem)] -m-8 md:-m-10">
+      <header className="border-b border-mist px-6 py-3 flex items-center gap-3 bg-white">
         <Link
           href="/dashboard/inbox"
-          className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-600 dark:text-zinc-400"
+          className="p-1.5 rounded-md hover:bg-mist/50 text-deep/70 hover:text-ink transition-colors"
           aria-label="Back to inbox"
         >
           <ArrowLeft className="h-4 w-4" />
         </Link>
-        <div className="h-9 w-9 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-xs font-medium text-zinc-600 dark:text-zinc-400">
-          {displayName.slice(0, 2).toUpperCase()}
-        </div>
+        <Avatar name={displayName} size="sm" />
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium truncate">{displayName}</div>
-          <div className="text-xs text-zinc-500 truncate">
+          <div className="text-[14px] font-medium text-ink truncate">
+            {displayName}
+          </div>
+          <div className="text-[12px] text-deep/60 truncate">
             {counterpart?.email || c.external_ref || "—"}
           </div>
         </div>
+        <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-mist/60 border border-mist px-3 py-1 text-[11px] text-deep/70">
+          <span className="h-1.5 w-1.5 rounded-full bg-deep/50" />
+          <span className="font-medium text-ink">{inboxName}</span>
+        </div>
+        <StatusDropdown
+          conversationId={c.id}
+          currentStatus={c.status as ConversationStatus}
+          siblingInboxes={siblingInboxes ?? []}
+          currentTransferredNote={c.transferred_note}
+        />
+        {/* Placeholder for prompt 8 — keeps the header layout stable. */}
+        <div data-slot="assignment" />
       </header>
 
       <ThreadView

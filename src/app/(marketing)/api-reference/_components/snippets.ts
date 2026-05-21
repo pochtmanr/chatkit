@@ -1,7 +1,7 @@
 import { highlight, type SupportedLang } from "@/app/_components/highlight";
 import type { CodeTab } from "@/app/_components/CodeTabs";
 
-const BASE_URL = "https://api.tinychat.dev";
+const BASE_URL = "https://api.chatkit.cc";
 const SAMPLE_KEY = "pk_live_REPLACE_ME";
 
 export { BASE_URL, SAMPLE_KEY };
@@ -21,13 +21,13 @@ export const AUTH_TABS = tabs([
     label: "curl",
     lang: "bash",
     code: `curl ${BASE_URL}/v1/config \\
-  -H "x-tinychat-api-key: ${SAMPLE_KEY}"`,
+  -H "x-chatkit-api-key: ${SAMPLE_KEY}"`,
   },
   {
     label: "TypeScript",
     lang: "tsx",
     code: `const res = await fetch("${BASE_URL}/v1/config", {
-  headers: { "x-tinychat-api-key": process.env.TINYCHAT_KEY! },
+  headers: { "x-chatkit-api-key": process.env.CHATKIT_KEY! },
 });
 const { tenant, realtime } = await res.json();`,
   },
@@ -40,13 +40,13 @@ export const CONFIG_TABS = tabs([
     label: "curl",
     lang: "bash",
     code: `curl ${BASE_URL}/v1/config \\
-  -H "x-tinychat-api-key: ${SAMPLE_KEY}"`,
+  -H "x-chatkit-api-key: ${SAMPLE_KEY}"`,
   },
   {
     label: "TypeScript",
     lang: "tsx",
     code: `const res = await fetch("${BASE_URL}/v1/config", {
-  headers: { "x-tinychat-api-key": apiKey },
+  headers: { "x-chatkit-api-key": apiKey },
 });
 const config = await res.json();
 // { tenant: { id, name }, realtime: { supabase_url, supabase_anon_key, channel_prefix } }`,
@@ -78,7 +78,7 @@ export const USERS_TABS = tabs([
     label: "curl",
     lang: "bash",
     code: `curl -X POST ${BASE_URL}/v1/users \\
-  -H "x-tinychat-api-key: ${SAMPLE_KEY}" \\
+  -H "x-chatkit-api-key: ${SAMPLE_KEY}" \\
   -H "content-type: application/json" \\
   -d '{
     "user_id": "u_42",
@@ -93,7 +93,7 @@ export const USERS_TABS = tabs([
     code: `await fetch("${BASE_URL}/v1/users", {
   method: "POST",
   headers: {
-    "x-tinychat-api-key": apiKey,
+    "x-chatkit-api-key": apiKey,
     "content-type": "application/json",
   },
   body: JSON.stringify({
@@ -116,7 +116,7 @@ export const USERS_TABS = tabs([
 
 var req = URLRequest(url: URL(string: "${BASE_URL}/v1/users")!)
 req.httpMethod = "POST"
-req.setValue(apiKey, forHTTPHeaderField: "x-tinychat-api-key")
+req.setValue(apiKey, forHTTPHeaderField: "x-chatkit-api-key")
 req.setValue("application/json", forHTTPHeaderField: "content-type")
 req.httpBody = try JSONEncoder().encode(
   UpsertUser(user_id: "u_42", name: "Ada", email: nil, role: "customer")
@@ -132,7 +132,7 @@ let (data, _) = try await URLSession.shared.data(for: req)`,
 
 val req = Request.Builder()
   .url("${BASE_URL}/v1/users")
-  .addHeader("x-tinychat-api-key", apiKey)
+  .addHeader("x-chatkit-api-key", apiKey)
   .addHeader("content-type", "application/json")
   .post(body.toRequestBody("application/json".toMediaType()))
   .build()
@@ -168,14 +168,14 @@ export const CONVERSATIONS_LIST_TABS = tabs([
     label: "curl",
     lang: "bash",
     code: `curl "${BASE_URL}/v1/conversations?user_id=u_42&kind=support" \\
-  -H "x-tinychat-api-key: ${SAMPLE_KEY}"`,
+  -H "x-chatkit-api-key: ${SAMPLE_KEY}"`,
   },
   {
     label: "TypeScript",
     lang: "tsx",
     code: `const q = new URLSearchParams({ user_id: "u_42", kind: "support" });
 const res = await fetch(\`${BASE_URL}/v1/conversations?\${q}\`, {
-  headers: { "x-tinychat-api-key": apiKey },
+  headers: { "x-chatkit-api-key": apiKey },
 });
 const { conversations } = await res.json();`,
   },
@@ -184,7 +184,7 @@ const { conversations } = await res.json();`,
     lang: "swift",
     code: `let url = URL(string: "${BASE_URL}/v1/conversations?user_id=u_42&kind=support")!
 var req = URLRequest(url: url)
-req.setValue(apiKey, forHTTPHeaderField: "x-tinychat-api-key")
+req.setValue(apiKey, forHTTPHeaderField: "x-chatkit-api-key")
 let (data, _) = try await URLSession.shared.data(for: req)`,
   },
   {
@@ -192,7 +192,7 @@ let (data, _) = try await URLSession.shared.data(for: req)`,
     lang: "kotlin",
     code: `val req = Request.Builder()
   .url("${BASE_URL}/v1/conversations?user_id=u_42&kind=support")
-  .addHeader("x-tinychat-api-key", apiKey)
+  .addHeader("x-chatkit-api-key", apiKey)
   .get()
   .build()
 val res = client.newCall(req).execute()`,
@@ -226,7 +226,7 @@ export const CONVERSATIONS_CREATE_TABS = tabs([
     label: "curl",
     lang: "bash",
     code: `curl -X POST ${BASE_URL}/v1/conversations \\
-  -H "x-tinychat-api-key: ${SAMPLE_KEY}" \\
+  -H "x-chatkit-api-key: ${SAMPLE_KEY}" \\
   -H "content-type: application/json" \\
   -d '{
     "kind": "order",
@@ -240,7 +240,7 @@ export const CONVERSATIONS_CREATE_TABS = tabs([
     code: `const res = await fetch("${BASE_URL}/v1/conversations", {
   method: "POST",
   headers: {
-    "x-tinychat-api-key": apiKey,
+    "x-chatkit-api-key": apiKey,
     "content-type": "application/json",
   },
   body: JSON.stringify({
@@ -262,7 +262,7 @@ const { conversation } = await res.json();`,
 
 var req = URLRequest(url: URL(string: "${BASE_URL}/v1/conversations")!)
 req.httpMethod = "POST"
-req.setValue(apiKey, forHTTPHeaderField: "x-tinychat-api-key")
+req.setValue(apiKey, forHTTPHeaderField: "x-chatkit-api-key")
 req.setValue("application/json", forHTTPHeaderField: "content-type")
 req.httpBody = try JSONEncoder().encode(
   CreateConv(kind: "order", external_ref: "order_9001",
@@ -282,7 +282,7 @@ req.httpBody = try JSONEncoder().encode(
 
 val req = Request.Builder()
   .url("${BASE_URL}/v1/conversations")
-  .addHeader("x-tinychat-api-key", apiKey)
+  .addHeader("x-chatkit-api-key", apiKey)
   .addHeader("content-type", "application/json")
   .post(body.toRequestBody("application/json".toMediaType()))
   .build()`,
@@ -313,14 +313,14 @@ export const MESSAGES_LIST_TABS = tabs([
     label: "curl",
     lang: "bash",
     code: `curl "${BASE_URL}/v1/conversations/c_abc/messages?limit=50" \\
-  -H "x-tinychat-api-key: ${SAMPLE_KEY}"`,
+  -H "x-chatkit-api-key: ${SAMPLE_KEY}"`,
   },
   {
     label: "TypeScript",
     lang: "tsx",
     code: `const res = await fetch(
   \`${BASE_URL}/v1/conversations/\${id}/messages?limit=50\`,
-  { headers: { "x-tinychat-api-key": apiKey } },
+  { headers: { "x-chatkit-api-key": apiKey } },
 );
 const { messages } = await res.json();  // oldest first`,
   },
@@ -329,7 +329,7 @@ const { messages } = await res.json();  // oldest first`,
     lang: "swift",
     code: `let url = URL(string: "${BASE_URL}/v1/conversations/\\(id)/messages?limit=50")!
 var req = URLRequest(url: url)
-req.setValue(apiKey, forHTTPHeaderField: "x-tinychat-api-key")
+req.setValue(apiKey, forHTTPHeaderField: "x-chatkit-api-key")
 let (data, _) = try await URLSession.shared.data(for: req)`,
   },
   {
@@ -337,7 +337,7 @@ let (data, _) = try await URLSession.shared.data(for: req)`,
     lang: "kotlin",
     code: `val req = Request.Builder()
   .url("${BASE_URL}/v1/conversations/$id/messages?limit=50")
-  .addHeader("x-tinychat-api-key", apiKey)
+  .addHeader("x-chatkit-api-key", apiKey)
   .get()
   .build()`,
   },
@@ -373,7 +373,7 @@ export const MESSAGES_SEND_TABS = tabs([
     label: "curl",
     lang: "bash",
     code: `curl -X POST ${BASE_URL}/v1/conversations/c_abc/messages \\
-  -H "x-tinychat-api-key: ${SAMPLE_KEY}" \\
+  -H "x-chatkit-api-key: ${SAMPLE_KEY}" \\
   -H "content-type: application/json" \\
   -d '{
     "sender_id": "u_42",
@@ -389,7 +389,7 @@ export const MESSAGES_SEND_TABS = tabs([
   {
     method: "POST",
     headers: {
-      "x-tinychat-api-key": apiKey,
+      "x-chatkit-api-key": apiKey,
       "content-type": "application/json",
     },
     body: JSON.stringify({
@@ -415,7 +415,7 @@ var req = URLRequest(
   url: URL(string: "${BASE_URL}/v1/conversations/\\(id)/messages")!
 )
 req.httpMethod = "POST"
-req.setValue(apiKey, forHTTPHeaderField: "x-tinychat-api-key")
+req.setValue(apiKey, forHTTPHeaderField: "x-chatkit-api-key")
 req.setValue("application/json", forHTTPHeaderField: "content-type")
 req.httpBody = try JSONEncoder().encode(
   SendMessage(sender_id: "u_42", body: "Hello",
@@ -431,7 +431,7 @@ req.httpBody = try JSONEncoder().encode(
 
 val req = Request.Builder()
   .url("${BASE_URL}/v1/conversations/$id/messages")
-  .addHeader("x-tinychat-api-key", apiKey)
+  .addHeader("x-chatkit-api-key", apiKey)
   .addHeader("content-type", "application/json")
   .post(body.toRequestBody("application/json".toMediaType()))
   .build()`,
@@ -462,7 +462,7 @@ export const MESSAGES_EDIT_TABS = tabs([
     label: "curl",
     lang: "bash",
     code: `curl -X PATCH ${BASE_URL}/v1/conversations/c_abc/messages/m_42 \\
-  -H "x-tinychat-api-key: ${SAMPLE_KEY}" \\
+  -H "x-chatkit-api-key: ${SAMPLE_KEY}" \\
   -H "content-type: application/json" \\
   -d '{ "sender_id": "u_42", "body": "Actually, where IS my order?" }'`,
   },
@@ -474,7 +474,7 @@ export const MESSAGES_EDIT_TABS = tabs([
   {
     method: "PATCH",
     headers: {
-      "x-tinychat-api-key": apiKey,
+      "x-chatkit-api-key": apiKey,
       "content-type": "application/json",
     },
     body: JSON.stringify({ sender_id: "u_42", body: "updated text" }),
@@ -490,7 +490,7 @@ export const MESSAGES_DELETE_TABS = tabs([
     label: "curl",
     lang: "bash",
     code: `curl -X DELETE ${BASE_URL}/v1/conversations/c_abc/messages/m_42 \\
-  -H "x-tinychat-api-key: ${SAMPLE_KEY}" \\
+  -H "x-chatkit-api-key: ${SAMPLE_KEY}" \\
   -H "content-type: application/json" \\
   -d '{ "sender_id": "u_42" }'`,
   },
@@ -502,7 +502,7 @@ export const MESSAGES_DELETE_TABS = tabs([
   {
     method: "DELETE",
     headers: {
-      "x-tinychat-api-key": apiKey,
+      "x-chatkit-api-key": apiKey,
       "content-type": "application/json",
     },
     body: JSON.stringify({ sender_id: "u_42" }),
@@ -518,7 +518,7 @@ export const TYPING_TABS = tabs([
     label: "curl",
     lang: "bash",
     code: `curl -X POST ${BASE_URL}/v1/conversations/c_abc/typing \\
-  -H "x-tinychat-api-key: ${SAMPLE_KEY}" \\
+  -H "x-chatkit-api-key: ${SAMPLE_KEY}" \\
   -H "content-type: application/json" \\
   -d '{ "sender_id": "u_42", "sender_name": "Ada" }'`,
   },
@@ -529,7 +529,7 @@ export const TYPING_TABS = tabs([
 await fetch(\`${BASE_URL}/v1/conversations/\${id}/typing\`, {
   method: "POST",
   headers: {
-    "x-tinychat-api-key": apiKey,
+    "x-chatkit-api-key": apiKey,
     "content-type": "application/json",
   },
   body: JSON.stringify({ sender_id: "u_42", sender_name: "Ada" }),
@@ -543,7 +543,7 @@ var req = URLRequest(
   url: URL(string: "${BASE_URL}/v1/conversations/\\(id)/typing")!
 )
 req.httpMethod = "POST"
-req.setValue(apiKey, forHTTPHeaderField: "x-tinychat-api-key")
+req.setValue(apiKey, forHTTPHeaderField: "x-chatkit-api-key")
 req.setValue("application/json", forHTTPHeaderField: "content-type")
 req.httpBody = #"{"sender_id":"u_42","sender_name":"Ada"}"#.data(using: .utf8)
 _ = try? await URLSession.shared.data(for: req)`,
@@ -555,7 +555,7 @@ _ = try? await URLSession.shared.data(for: req)`,
 val body = """{ "sender_id": "u_42", "sender_name": "Ada" }"""
 val req = Request.Builder()
   .url("${BASE_URL}/v1/conversations/$id/typing")
-  .addHeader("x-tinychat-api-key", apiKey)
+  .addHeader("x-chatkit-api-key", apiKey)
   .addHeader("content-type", "application/json")
   .post(body.toRequestBody("application/json".toMediaType()))
   .build()`,
@@ -569,7 +569,7 @@ export const UPLOAD_TABS = tabs([
     label: "curl",
     lang: "bash",
     code: `curl -X POST ${BASE_URL}/v1/conversations/c_abc/upload \\
-  -H "x-tinychat-api-key: ${SAMPLE_KEY}" \\
+  -H "x-chatkit-api-key: ${SAMPLE_KEY}" \\
   -F "file=@./receipt.png"`,
   },
   {
@@ -582,7 +582,7 @@ const up = await fetch(
   \`${BASE_URL}/v1/conversations/\${id}/upload\`,
   {
     method: "POST",
-    headers: { "x-tinychat-api-key": apiKey },
+    headers: { "x-chatkit-api-key": apiKey },
     body: form,
   },
 );
@@ -592,7 +592,7 @@ const { url } = await up.json();
 await fetch(\`${BASE_URL}/v1/conversations/\${id}/messages\`, {
   method: "POST",
   headers: {
-    "x-tinychat-api-key": apiKey,
+    "x-chatkit-api-key": apiKey,
     "content-type": "application/json",
   },
   body: JSON.stringify({
@@ -610,7 +610,7 @@ var req = URLRequest(
   url: URL(string: "${BASE_URL}/v1/conversations/\\(id)/upload")!
 )
 req.httpMethod = "POST"
-req.setValue(apiKey, forHTTPHeaderField: "x-tinychat-api-key")
+req.setValue(apiKey, forHTTPHeaderField: "x-chatkit-api-key")
 req.setValue(
   "multipart/form-data; boundary=\\(boundary)",
   forHTTPHeaderField: "content-type"
@@ -640,7 +640,7 @@ req.httpBody = body`,
 
 val req = Request.Builder()
   .url("${BASE_URL}/v1/conversations/$id/upload")
-  .addHeader("x-tinychat-api-key", apiKey)
+  .addHeader("x-chatkit-api-key", apiKey)
   .post(body)
   .build()`,
   },
@@ -667,7 +667,7 @@ export const REALTIME_TABS = tabs([
 
 // 1. Bootstrap: pull realtime creds from /v1/config
 const cfg = await fetch("${BASE_URL}/v1/config", {
-  headers: { "x-tinychat-api-key": apiKey },
+  headers: { "x-chatkit-api-key": apiKey },
 }).then((r) => r.json());
 
 const supabase = createClient(

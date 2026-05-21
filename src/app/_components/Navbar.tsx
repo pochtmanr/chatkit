@@ -9,17 +9,20 @@ export default function Navbar() {
         <nav className="flex items-center justify-between rounded-full bg-white/90 backdrop-blur-md border border-zinc-200/80 shadow-lg shadow-ink/5 p-2">
           <Link
             href="/"
-            aria-label="TinyChat"
-            className="grid place-items-center h-10 w-10 rounded-full bg-white border border-zinc-200/80 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+            aria-label="ChatKit"
+            className="flex items-center gap-2 pl-2 pr-3 h-10 rounded-full hover:bg-mist transition-colors"
           >
             <Image
-              src="/tclogo.png"
-              alt="TinyChat"
-              width={32}
-              height={32}
+              src="/chatkit.png"
+              alt="ChatKit"
+              width={765}
+              height={649}
               priority
-              className="h-8 w-8 rounded-full"
+              className="h-6 w-auto"
             />
+            <span className="font-medium text-lg tracking-tight text-ink">
+              ChatKit
+            </span>
           </Link>
 
           <div className="hidden md:flex items-center gap-1 text-sm font-medium text-deep">

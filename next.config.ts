@@ -25,6 +25,13 @@ function embedAllowedOrigins(): string[] {
 }
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      // Friendly URL: /api → /api-reference. Note we only match the exact
+      // path; /api/* still resolves to the route handlers under src/app/api.
+      { source: "/api", destination: "/api-reference", permanent: false },
+    ];
+  },
   async headers() {
     const allowed = embedAllowedOrigins();
     // CSP frame-ancestors is the modern replacement for X-Frame-Options.

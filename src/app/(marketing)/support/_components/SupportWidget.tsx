@@ -43,14 +43,15 @@ export function SupportWidget({ apiKey }: { apiKey: string }) {
     postOpen();
   };
 
-  // Any [data-tinychat-open] button on the host page deep-links into
-  // the panel — WidgetShell listens for `chat-admin:open` and flips
-  // from FAB to list/thread view. If the iframe hasn't booted yet,
-  // queue the intent and replay it once the iframe announces itself.
+  // Any [data-chatkit-open] (legacy: [data-tinychat-open]) button on
+  // the host page deep-links into the panel — WidgetShell listens for
+  // `chat-admin:open` and flips from FAB to list/thread view. If the
+  // iframe hasn't booted yet, queue the intent and replay it once the
+  // iframe announces itself.
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       const target = (e.target as Element | null)?.closest(
-        "[data-tinychat-open]",
+        "[data-chatkit-open], [data-tinychat-open]",
       );
       if (!target) return;
       if (readyRef.current) {
@@ -83,7 +84,7 @@ export function SupportWidget({ apiKey }: { apiKey: string }) {
         ref={iframeRef}
         onLoad={handleLoad}
         src={`/embed/widget?key=${encodeURIComponent(apiKey)}`}
-        title="TinyChat support"
+        title="ChatKit support"
         allow="clipboard-write"
         className="w-full h-full border-0 bg-transparent rounded-2xl"
       />

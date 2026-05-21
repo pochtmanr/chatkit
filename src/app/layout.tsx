@@ -16,7 +16,7 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "TinyChat",
+  title: "ChatKit",
   description: "Drop-in chat infrastructure for delivery and marketplace apps.",
 };
 

@@ -1,7 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getServerClient, getServiceClient } from "@/lib/supabase/server";
-import { broadcastMessage } from "@/lib/realtime";
-import { fireTenantWebhook } from "@/lib/tenant-webhook";
+import { broadcastMessage, broadcastStatus } from "@/lib/realtime";
+import {
+  fireConversationStatusChanged,
+  fireTenantWebhook,
+} from "@/lib/tenant-webhook";
+import { updateConversationStatusFromMessage } from "@/lib/conversation-status-server";
 
 /**
  * Admin reply endpoint.
@@ -102,6 +106,11 @@ export async function POST(
     );
   }
 
+  const statusChange = await updateConversationStatusFromMessage({
+    conversationId,
+    direction: "outbound",
+  });
+
   await service
     .from("conversations")
     .update({
@@ -129,6 +138,23 @@ export async function POST(
     body: body || null,
     mediaUrl: mediaUrl,
   }).catch((err) => console.warn("[dashboard/reply] webhook fire failed:", err));
+
+  if (statusChange) {
+    const changedAt = new Date().toISOString();
+    void fireConversationStatusChanged({
+      conversationId,
+      previousStatus: statusChange.previous,
+      newStatus: statusChange.next,
+      changedBy: "agent",
+      changedByUserId: user.id,
+    });
+    void broadcastStatus(conversationId, {
+      previousStatus: statusChange.previous,
+      newStatus: statusChange.next,
+      changedAt,
+      changedByUserId: user.id,
+    });
+  }
 
   return NextResponse.json({ message });
 }

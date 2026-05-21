@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Loader2, Paperclip, Send } from "lucide-react";
 import { getBrowserClient } from "@/lib/supabase/client";
 
@@ -47,6 +48,7 @@ export function ThreadView({
   replyEndpoint,
   replyAuthToken,
 }: ThreadViewProps) {
+  const router = useRouter();
   const endpoint =
     replyEndpoint ?? `/api/dashboard/conversations/${conversationId}/reply`;
   const [messages, setMessages] = useState<DbMessage[]>(initialMessages);
@@ -84,11 +86,17 @@ export function ThreadView({
           return [...prev, incoming];
         });
       })
+      .on("broadcast", { event: "status_changed" }, () => {
+        // Server fetches the header (status pill + transferred note) so
+        // refreshing the route picks up the new state without re-mounting
+        // the message list.
+        router.refresh();
+      })
       .subscribe();
     return () => {
       client.removeChannel(channel).catch(() => undefined);
     };
-  }, [conversationId]);
+  }, [conversationId, router]);
 
   const sendReply = useCallback(async () => {
     const body = text.trim();

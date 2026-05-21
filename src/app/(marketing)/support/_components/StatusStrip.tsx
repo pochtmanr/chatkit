@@ -12,7 +12,7 @@ export function StatusStrip() {
           <span className="text-deep">All systems operational</span>
         </div>
         <a
-          href="https://status.tinychat.dev"
+          href="https://status.chatkit.cc"
           target="_blank"
           rel="noreferrer noopener"
           className="text-sm text-deep font-medium hover:text-ink transition-colors inline-flex items-center gap-1"

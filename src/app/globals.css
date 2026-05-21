@@ -58,6 +58,11 @@ body {
   overflow: hidden;
 }
 
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes hero-typing {
   0%, 80%, 100% { transform: scale(0.7); opacity: 0.4; }
   40%           { transform: scale(1);   opacity: 1;   }

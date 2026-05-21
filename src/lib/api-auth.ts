@@ -1,32 +1,57 @@
 /**
  * API-key authentication for the public REST surface (/api/v1/*).
  *
- * The chat SDK identifies itself with the tenant's `pk_live_…` key in
- * the `x-tinychat-api-key` header. We resolve the key to a tenant row
- * via the service client (bypassing RLS, since the SDK isn't a logged-
- * in Supabase user) and pass the tenant down to the route handler.
+ * The chat SDK identifies itself with the inbox's `pk_live_…` key in
+ * the `x-chatkit-api-key` header (legacy `x-tinychat-api-key` still
+ * accepted for the pre-rebrand SDK). We resolve the key to an inbox
+ * row via the service client (bypassing RLS, since the SDK isn't a
+ * logged-in Supabase user), then hand both the inbox and the parent
+ * business down to the route handler.
+ *
+ * `tenant.id` on the returned context is the BUSINESS id — every
+ * dependent table still has a `tenant_id` column that FKs into the
+ * renamed `businesses` table, so existing route handlers continue to
+ * work without changes. The new `inbox` field is what callers reach
+ * for when they need per-inbox routing of replies/webhooks.
  */
 
 import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase/server";
 
 export interface AuthedTenant {
+  // Field name kept as `tenant` for backward compat with existing
+  // route handlers that do `tenant.id` and pass it to tenant_id
+  // columns. The id IS the business id.
   id: string;
   name: string;
   api_key: string;
   status: "active" | "overage" | "suspended";
 }
 
-/** Parse + validate the api_key header. Returns either a tenant row
- *  or a NextResponse that the caller should return immediately. */
+export interface AuthedInbox {
+  id: string;
+  name: string;
+  api_key: string;
+  webhook_url: string | null;
+}
+
+export interface AuthedContext {
+  tenant: AuthedTenant;
+  inbox: AuthedInbox;
+}
+
+/** Parse + validate the api_key header. Returns either an inbox/business
+ *  pair or a NextResponse that the caller should return immediately. */
 export async function authTenant(
   request: Request,
-): Promise<{ tenant: AuthedTenant } | { error: NextResponse }> {
-  const apiKey = request.headers.get("x-tinychat-api-key");
+): Promise<AuthedContext | { error: NextResponse }> {
+  const apiKey =
+    request.headers.get("x-chatkit-api-key") ??
+    request.headers.get("x-tinychat-api-key");
   if (!apiKey) {
     return {
       error: NextResponse.json(
-        { error: "missing x-tinychat-api-key header" },
+        { error: "missing x-chatkit-api-key header" },
         { status: 401 },
       ),
     };
@@ -41,32 +66,50 @@ export async function authTenant(
 
   const service = getServiceClient();
   const { data, error } = await service
-    .from("tenants")
-    .select("id, name, api_key, status")
+    .from("inboxes")
+    .select(`
+      id, name, api_key, webhook_url,
+      business:businesses (id, name, status)
+    `)
     .eq("api_key", apiKey)
     .maybeSingle();
-  if (error || !data) {
+  if (error || !data || !data.business) {
     return {
       error: NextResponse.json({ error: "invalid api key" }, { status: 401 }),
     };
   }
-  if (data.status !== "active") {
+  const business = Array.isArray(data.business) ? data.business[0] : data.business;
+  if (business.status !== "active") {
     return {
       error: NextResponse.json(
-        { error: `tenant is ${data.status}` },
+        { error: `tenant is ${business.status}` },
         { status: 403 },
       ),
     };
   }
-  return { tenant: data as AuthedTenant };
+  return {
+    tenant: {
+      id: business.id,
+      name: business.name,
+      api_key: data.api_key,
+      status: business.status as "active",
+    },
+    inbox: {
+      id: data.id,
+      name: data.name,
+      api_key: data.api_key,
+      webhook_url: data.webhook_url,
+    },
+  };
 }
 
 /** CORS headers for SDK origins — the RN app calls from a webview-like
  *  fetch context with no Origin header, but a web SDK would. Keep it
- *  permissive for now; tighten when we have a per-tenant allowlist. */
+ *  permissive for now; tighten when we have a per-inbox allowlist. */
 export const corsHeaders = {
   "access-control-allow-origin": "*",
   "access-control-allow-methods": "GET, POST, PATCH, DELETE, OPTIONS",
-  "access-control-allow-headers": "content-type, x-tinychat-api-key",
+  "access-control-allow-headers":
+    "content-type, x-chatkit-api-key, x-tinychat-api-key",
   "access-control-max-age": "86400",
 } as const;

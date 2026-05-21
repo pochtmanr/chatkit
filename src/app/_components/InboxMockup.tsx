@@ -8,7 +8,7 @@ export default function InboxMockup() {
         <span className="h-2.5 w-2.5 rounded-full bg-zinc-200" />
         <span className="h-2.5 w-2.5 rounded-full bg-zinc-200" />
         <span className="h-2.5 w-2.5 rounded-full bg-zinc-200" />
-        <span className="ml-3 text-xs text-zinc-400 font-mono">tinychat.app/inbox</span>
+        <span className="ml-3 text-xs text-zinc-400 font-mono">chatkit.cc/inbox</span>
       </div>
       <div className="grid grid-cols-[200px_1fr] sm:grid-cols-[240px_1fr] min-h-[320px]">
         {/* conv list */}

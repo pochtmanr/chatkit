@@ -1,6 +1,7 @@
-import { revalidatePath } from "next/cache";
-import { getServerClient, getServiceClient } from "@/lib/supabase/server";
-import { WebhookTestButton } from "./WebhookTestButton";
+import { requireActiveContext } from "@/lib/active-context";
+import { getServiceClient } from "@/lib/supabase/server";
+import { LABELS } from "@/lib/onboarding/enums";
+import { WebhookRow } from "./WebhookRow";
 
 interface DeliveryRow {
   id: string;
@@ -11,134 +12,113 @@ interface DeliveryRow {
   response_body: string | null;
   error: string | null;
   attempted_at: string;
-  completed_at: string | null;
 }
 
 export default async function WebhooksPage() {
-  const supabase = await getServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data: tenants } = await supabase
-    .from("tenants")
-    .select("id, webhook_url")
-    .eq("owner_user_id", user!.id);
-
-  // Recent delivery attempts. Service client because we're outside an
-  // auth.uid() session context — scope by tenant_id explicitly so a
-  // bug here can't cross tenants.
+  const ctx = await requireActiveContext();
   const service = getServiceClient();
-  const tenantIds = (tenants ?? []).map((t) => t.id);
-  let deliveries: DeliveryRow[] = [];
-  if (tenantIds.length > 0) {
-    try {
-      const { data } = await service
-        .from("webhook_deliveries")
-        .select(
-          "id, webhook_url, event, status, response_code, response_body, error, attempted_at, completed_at",
-        )
-        .in("tenant_id", tenantIds)
-        .order("attempted_at", { ascending: false })
-        .limit(50);
-      deliveries = (data ?? []) as DeliveryRow[];
-    } catch {
-      // Migration 0012 may not be applied yet; render with no rows.
-    }
-  }
 
-  async function save(formData: FormData) {
-    "use server";
-    const tenantId = String(formData.get("tenantId") ?? "");
-    const url = String(formData.get("url") ?? "").trim() || null;
-    const sb = await getServerClient();
-    await sb.from("tenants").update({ webhook_url: url }).eq("id", tenantId);
-    revalidatePath("/dashboard/webhooks");
+  // Recent deliveries for the active business (across all its inboxes).
+  let deliveries: DeliveryRow[] = [];
+  try {
+    const { data } = await service
+      .from("webhook_deliveries")
+      .select(
+        "id, webhook_url, event, status, response_code, response_body, error, attempted_at",
+      )
+      .eq("tenant_id", ctx.business.id)
+      .order("attempted_at", { ascending: false })
+      .limit(50);
+    deliveries = (data ?? []) as DeliveryRow[];
+  } catch {
+    // Migration 0012 may not be applied — render empty.
   }
 
   return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Webhooks</h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          We POST every new message to this URL so you can fan out FCM /
-          SMS / your own notifications. Set the URL, hit{" "}
-          <span className="font-medium">Test</span>, and watch the
-          delivery log below.
+    <div className="space-y-8">
+      <header className="space-y-3">
+        <p className="text-[14px] font-medium text-deep/60">Delivery</p>
+        <h1 className="text-3xl sm:text-4xl tracking-tight text-ink leading-[1] font-normal">
+          Outgoing{" "}
+          <span className="font-serif-italic font-normal text-deep">
+            webhooks<span className="text-deep/40">.</span>
+          </span>
+        </h1>
+        <p className="text-deep/70 leading-relaxed text-[15px] font-normal max-w-[640px]">
+          We POST every new message to the inbox&apos;s webhook URL so you
+          can fan out FCM / SMS / your own notifications. One URL per
+          inbox.
         </p>
       </header>
 
-      <section className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 space-y-4">
-        {(tenants ?? []).map((t) => (
-          <div key={t.id} className="space-y-3">
-            <form action={save} className="flex flex-col sm:flex-row gap-3">
-              <input type="hidden" name="tenantId" value={t.id} />
-              <input
-                name="url"
-                type="url"
-                defaultValue={t.webhook_url ?? ""}
-                placeholder="https://your-server.com/chat-webhook"
-                className="flex-1 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent px-3 py-2 text-sm font-mono"
-              />
-              <button
-                type="submit"
-                className="rounded-lg bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 text-white px-4 py-2 text-sm font-medium"
-              >
-                Save
-              </button>
-            </form>
-            <WebhookTestButton disabled={!t.webhook_url} />
-          </div>
-        ))}
+      <section className="grid sm:grid-cols-2 gap-3">
+        {ctx.groups.flatMap((g) =>
+          g.inboxes.map((ib) => (
+            <WebhookRow
+              key={ib.id}
+              inboxId={ib.id}
+              inboxName={ib.name}
+              projectName={g.project.name}
+              audience={
+                LABELS.audience[ib.audience as keyof typeof LABELS.audience] ??
+                ib.audience
+              }
+              initialUrl={ib.webhook_url}
+            />
+          )),
+        )}
+      </section>
 
-        <details className="text-xs text-zinc-500 space-y-1">
-          <summary className="cursor-pointer font-semibold text-zinc-700 dark:text-zinc-300">
-            Payload shape
-          </summary>
-          <pre className="mt-2 bg-zinc-100 dark:bg-zinc-800 rounded p-3 overflow-x-auto">
+      <details className="rounded-2xl bg-white border border-mist/80 shadow-[0_1px_2px_rgba(11,11,11,0.04)] p-5">
+        <summary className="cursor-pointer text-[14px] font-medium text-ink">
+          Payload shape
+        </summary>
+        <pre className="mt-3 rounded-xl bg-ink text-white/90 font-mono text-[12px] px-4 py-3 overflow-x-auto">
 {`POST {webhook_url}
 {
   "event": "message_received",
   "tenant_id": "...",
+  "inbox_id": "...",       // NEW — use this to route per inbox
   "conversation_id": "...",
+  "conversation_kind": "support",
+  "external_ref": "...",
+  "direction": "inbound" | "outbound",
   "to_user_id": "...",
   "fcm_tokens": ["..."],
   "sender_id": "...",
   "snippet": "Hey, where are you?",
-  "media_url": "..." // optional, only for image messages
+  "media_url": "..." // only for image messages
 }`}
-          </pre>
-        </details>
-      </section>
+        </pre>
+      </details>
 
-      <section className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-0 overflow-hidden">
-        <header className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-baseline justify-between">
-          <h2 className="text-sm font-semibold tracking-tight">
-            Recent deliveries
-          </h2>
-          <span className="text-xs text-zinc-500">
-            Last 50 — most recent first
+      <section className="rounded-2xl bg-white border border-mist/80 shadow-[0_1px_2px_rgba(11,11,11,0.04)] overflow-hidden">
+        <header className="sticky top-0 bg-white z-10 px-5 py-3 border-b border-mist flex items-baseline justify-between">
+          <h2 className="text-[14px] font-medium text-ink">Recent deliveries</h2>
+          <span className="text-[12px] text-deep/60">
+            Last 50 across {ctx.business.name}
           </span>
         </header>
         {deliveries.length === 0 ? (
-          <div className="p-8 text-center text-sm text-zinc-500">
-            No webhook calls yet. Send a chat message or hit Test above.
+          <div className="p-12 text-center text-[14px] text-deep/60">
+            No webhook calls yet. Set a URL on an inbox above and hit Test.
           </div>
         ) : (
-          <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
+          <ul className="divide-y divide-mist">
             {deliveries.map((d) => (
-              <li key={d.id} className="px-4 py-3 text-xs space-y-1">
+              <li key={d.id} className="px-5 py-3 text-[13px] space-y-1">
                 <div className="flex items-center gap-2">
                   <StatusBadge status={d.status} />
-                  <span className="font-medium">{d.event}</span>
-                  <span className="text-zinc-500">
+                  <span className="font-medium text-ink">{d.event}</span>
+                  <span className="text-deep/50">
                     {d.response_code ? `· ${d.response_code}` : ""}
                   </span>
-                  <span className="ml-auto text-zinc-500">
+                  <span className="ml-auto text-deep/50">
                     {new Date(d.attempted_at).toLocaleTimeString()}
                   </span>
                 </div>
                 {(d.error || d.response_body) && (
-                  <div className="text-zinc-500 font-mono break-all">
+                  <div className="text-deep/60 font-mono break-all text-[12px]">
                     {d.error
                       ? `error: ${d.error}`
                       : (d.response_body ?? "").slice(0, 200)}
@@ -155,16 +135,13 @@ export default async function WebhooksPage() {
 
 function StatusBadge({ status }: { status: DeliveryRow["status"] }) {
   const classes: Record<DeliveryRow["status"], string> = {
-    pending:
-      "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300",
-    success:
-      "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300",
-    failed:
-      "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300",
+    pending: "bg-amber-50 text-amber-700 border-amber-100",
+    success: "bg-emerald-50 text-emerald-700 border-emerald-100",
+    failed: "bg-red-50 text-red-700 border-red-100",
   };
   return (
     <span
-      className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${classes[status]}`}
+      className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${classes[status]}`}
     >
       {status}
     </span>

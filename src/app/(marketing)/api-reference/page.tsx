@@ -37,7 +37,7 @@ import {
 } from "./_components/snippets";
 
 export const metadata: Metadata = {
-  title: "API reference — TinyChat",
+  title: "API reference — ChatKit",
   description:
     "REST API for sending messages, managing conversations, and uploading attachments.",
 };
@@ -67,7 +67,7 @@ const ERRORS: { status: number; body: string; cause: string }[] = [
   },
   {
     status: 401,
-    body: `{ "error": "missing x-tinychat-api-key header" }`,
+    body: `{ "error": "missing x-chatkit-api-key header" }`,
     cause: "No auth header sent.",
   },
   {
@@ -115,7 +115,7 @@ export default function ApiReferencePage() {
           <div className="max-w-3xl">
             <p className="text-[14px] font-medium text-deep/60">API reference</p>
             <h1 className="mt-4 text-4xl sm:text-6xl tracking-tight text-ink leading-[1] font-normal">
-              The TinyChat{" "}
+              The ChatKit{" "}
               <span className="font-serif-italic text-deep">
                 REST surface<span className="text-deep/40">.</span>
               </span>
@@ -170,7 +170,7 @@ export default function ApiReferencePage() {
                 <p className="text-deep/70 leading-relaxed text-[15px]">
                   Send your tenant&apos;s publishable key in the{" "}
                   <code className="font-mono text-[13px] text-ink bg-mist/60 px-1.5 py-0.5 rounded">
-                    x-tinychat-api-key
+                    x-chatkit-api-key
                   </code>{" "}
                   header on every request. Keys start with{" "}
                   <code className="font-mono text-[13px] text-ink bg-mist/60 px-1.5 py-0.5 rounded">
@@ -226,7 +226,7 @@ export default function ApiReferencePage() {
                     <li>
                       <span className="text-deep/50">Headers:</span>{" "}
                       <code className="font-mono">
-                        content-type, x-tinychat-api-key
+                        content-type, x-chatkit-api-key
                       </code>
                     </li>
                   </ul>
@@ -253,7 +253,7 @@ export default function ApiReferencePage() {
                 title="Headers"
                 rows={[
                   {
-                    name: "x-tinychat-api-key",
+                    name: "x-chatkit-api-key",
                     type: "string",
                     required: true,
                     description: "Your tenant key (pk_live_… or pk_test_…).",

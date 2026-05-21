@@ -7,13 +7,15 @@ import { SupportHero } from "./_components/SupportHero";
 import { VisitorSupportWidget } from "./_components/VisitorSupportWidget";
 
 export const metadata: Metadata = {
-  title: "Support — TinyChat",
+  title: "Support — ChatKit",
   description:
-    "Get help from the TinyChat team. Tap the chat bubble to talk to us — yes, it's our own product.",
+    "Get help from the ChatKit team. Tap the chat bubble to talk to us — yes, it's our own product.",
 };
 
 export default function SupportPage() {
-  const supportKey = process.env.NEXT_PUBLIC_TINYCHAT_SUPPORT_KEY;
+  const supportKey =
+    process.env.NEXT_PUBLIC_CHATKIT_SUPPORT_KEY ??
+    process.env.NEXT_PUBLIC_TINYCHAT_SUPPORT_KEY;
 
   return (
     <>

@@ -1,8 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getServiceClient } from "@/lib/supabase/server";
-import { broadcastMessage } from "@/lib/realtime";
+import { broadcastMessage, broadcastStatus } from "@/lib/realtime";
 import { verifyEmbedKey } from "@/lib/embed-auth";
-import { fireTenantWebhook } from "@/lib/tenant-webhook";
+import {
+  fireConversationStatusChanged,
+  fireTenantWebhook,
+} from "@/lib/tenant-webhook";
+import { updateConversationStatusFromMessage } from "@/lib/conversation-status-server";
 
 /**
  * Embed-mode reply endpoint.
@@ -102,6 +106,14 @@ export async function POST(
     );
   }
 
+  // sender_id is "agent" (per the embed-iframe agent flow), so direction
+  // is outbound for status purposes — consistent with how tenant-webhook
+  // infers it from the sender id.
+  const statusChange = await updateConversationStatusFromMessage({
+    conversationId,
+    direction: "outbound",
+  });
+
   await service
     .from("conversations")
     .update({
@@ -128,6 +140,23 @@ export async function POST(
     body: body || null,
     mediaUrl: mediaUrl,
   }).catch((err) => console.warn("[embed/reply] webhook fire failed:", err));
+
+  if (statusChange) {
+    const changedAt = new Date().toISOString();
+    void fireConversationStatusChanged({
+      conversationId,
+      previousStatus: statusChange.previous,
+      newStatus: statusChange.next,
+      changedBy: "system",
+      changedByUserId: null,
+    });
+    void broadcastStatus(conversationId, {
+      previousStatus: statusChange.previous,
+      newStatus: statusChange.next,
+      changedAt,
+      changedByUserId: null,
+    });
+  }
 
   return NextResponse.json({ message });
 }

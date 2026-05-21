@@ -29,8 +29,9 @@ import { MessageCircle, Send, X } from "lucide-react";
  *     polling is fine at our expected volume.
  *
  * Same-origin (this is our own site), so no iframe — render the panel
- * inline. We still respect any [data-tinychat-open] button on the host
- * page so the marketing copy ("Open the widget") can deep-link into it.
+ * inline. We still respect any [data-chatkit-open] (or legacy
+ * [data-tinychat-open]) button on the host page so the marketing copy
+ * ("Open the widget") can deep-link into it.
  */
 
 interface Message {
@@ -49,13 +50,23 @@ interface VisitorSession {
   email: string;
 }
 
-const STORAGE_KEY = "tinychat:visitor";
+const STORAGE_KEY = "chatkit:visitor";
+const LEGACY_STORAGE_KEY = "tinychat:visitor";
 const POLL_INTERVAL_MS = 4000;
 
 function readSession(): VisitorSession | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    let raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      // Migrate the pre-rebrand key so visitors mid-conversation don't
+      // see their thread reset on the next visit.
+      raw = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (raw) {
+        window.localStorage.setItem(STORAGE_KEY, raw);
+        window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+      }
+    }
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<VisitorSession>;
     if (
@@ -89,12 +100,12 @@ export function VisitorSupportWidget({ apiKey }: { apiKey: string }) {
     setHydrated(true);
   }, []);
 
-  // Honor [data-tinychat-open] anywhere on the host page (e.g. the
-  // "Open the widget" CTA in ContactCard).
+  // Honor [data-chatkit-open] (legacy: [data-tinychat-open]) anywhere
+  // on the host page (e.g. the "Open the widget" CTA in ContactCard).
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       const target = (e.target as Element | null)?.closest(
-        "[data-tinychat-open]",
+        "[data-chatkit-open], [data-tinychat-open]",
       );
       if (target) setOpen(true);
     };

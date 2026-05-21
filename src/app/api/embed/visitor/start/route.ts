@@ -122,6 +122,7 @@ export async function POST(request: NextRequest) {
       .from("conversations")
       .insert({
         tenant_id: session.tenantId,
+        inbox_id: session.inboxId,
         kind: "support",
         external_ref: visitorId,
         participants: [visitorId],
