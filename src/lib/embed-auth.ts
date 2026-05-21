@@ -46,15 +46,9 @@ class EmbedAuthError extends Error {
 /** Allowed iframe origins. Mirrors the CSP frame-ancestors list. */
 function allowedOrigins(): string[] {
   const envList = process.env.EMBED_ALLOWED_ORIGINS;
-  const fromEnv = envList
-    ? envList.split(",").map((s) => s.trim()).filter(Boolean)
-    : [];
+  if (!envList) return [];
   return Array.from(
-    new Set([
-      "https://www.isrshipping.com",
-      "https://isrshipping.com",
-      ...fromEnv,
-    ]),
+    new Set(envList.split(",").map((s) => s.trim()).filter(Boolean)),
   );
 }
 

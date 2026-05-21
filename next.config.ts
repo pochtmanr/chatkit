@@ -2,25 +2,17 @@ import type { NextConfig } from "next";
 
 /** Hosts allowed to iframe chat-admin's /embed/* routes.
  *
- *  Env var override lets you add staging or local dev hosts without
- *  editing code. Comma-separated list, e.g.
- *    EMBED_ALLOWED_ORIGINS="https://staging.isrshipping.com,http://localhost:3000"
+ *  Fully driven by EMBED_ALLOWED_ORIGINS — comma-separated list.
+ *  Read at build time, so a Vercel env var change requires a fresh
+ *  deployment (not just a redeploy of the existing build) to take
+ *  effect. Example:
+ *    EMBED_ALLOWED_ORIGINS="https://greenflagged.xyz,http://localhost:3000"
  */
 function embedAllowedOrigins(): string[] {
   const envList = process.env.EMBED_ALLOWED_ORIGINS;
-  const fromEnv = envList
-    ? envList
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean)
-    : [];
-  // Default + env additions, deduped.
+  if (!envList) return [];
   return Array.from(
-    new Set([
-      "https://www.isrshipping.com",
-      "https://isrshipping.com",
-      ...fromEnv,
-    ]),
+    new Set(envList.split(",").map((s) => s.trim()).filter(Boolean)),
   );
 }
 
