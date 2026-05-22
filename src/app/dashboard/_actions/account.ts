@@ -107,7 +107,7 @@ export async function cancelDeletionRequest(
 export async function requestDataExport(
   businessId: string,
 ): Promise<ActionResult<{ requestId: string }>> {
-  const guard = await requireRole(businessId, "admin");
+  const guard = await requireRole(businessId, "manager");
   if (!guard.ok) return guard;
 
   const admin = getServiceClient();

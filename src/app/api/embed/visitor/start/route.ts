@@ -10,7 +10,7 @@ import { fireTenantWebhook } from "@/lib/tenant-webhook";
  *
  * Public-facing endpoint that lets an anonymous visitor on a tenant's
  * marketing site open a support conversation. Symmetrical pair to
- * /api/embed/conversations/find — the difference is that the *visitor*
+ * /api/embed/customer/conversations/find — the difference is that the *visitor*
  * is the actor, so the inserted message is attributed to them (not to
  * the `agent` sentinel) and we upsert a chat_users row carrying their
  * name + email so the dashboard inbox can show who's writing.

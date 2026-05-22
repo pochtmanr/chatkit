@@ -59,10 +59,10 @@ async function requestOrigin(): Promise<string | null> {
 }
 
 /** chat-admin's own deployed URL, derived from the proxy headers. Used
- *  to detect same-origin internal navigation (e.g. when a Link inside
- *  /embed/widget navigates to /embed/inbox/<id> — the Origin/Referer
- *  on that request reflects chat-admin itself, not the embedding host,
- *  so the allowlist check would otherwise reject it). */
+ *  to detect same-origin internal navigation inside an iframe — the
+ *  Origin/Referer on those requests reflects chat-admin itself, not
+ *  the embedding host, so the allowlist check would otherwise reject
+ *  them. */
 async function selfOrigin(): Promise<string | null> {
   const h = await headers();
   const proto = h.get("x-forwarded-proto") ?? "https";
@@ -72,8 +72,12 @@ async function selfOrigin(): Promise<string | null> {
 
 /** Look up an inbox + its business by API key. Returns the bare row
  *  callers need; throws EmbedAuthError if the key is unknown or the
- *  business is suspended. */
-async function lookupInbox(key: string): Promise<{
+ *  business is suspended.
+ *
+ *  Exported (since round 5 prompt 1) because `widget-token.verifyWidgetToken`
+ *  also needs pk → inbox resolution, and duplicating the query would
+ *  drift over time. */
+export async function lookupInbox(key: string): Promise<{
   inboxId: string;
   businessId: string;
   businessName: string;

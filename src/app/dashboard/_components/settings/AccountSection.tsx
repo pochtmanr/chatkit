@@ -113,7 +113,7 @@ export function AccountSection({
           history. We&apos;ll email you a download link when it&apos;s ready
           (typically within 24 hours). The link expires in 7 days.
         </p>
-        {myRole === "owner" || myRole === "admin" ? (
+        {myRole === "owner" || myRole === "manager" ? (
           <button
             type="button"
             onClick={onExport}
@@ -125,7 +125,7 @@ export function AccountSection({
           </button>
         ) : (
           <p className="text-[13px] text-deep/60">
-            Only owners + admins can request exports.
+            Only owners + leads can request exports.
           </p>
         )}
         {exportRequests.length > 0 && (

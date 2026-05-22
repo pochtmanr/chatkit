@@ -41,12 +41,28 @@ export async function POST(
     .eq("id", conversationId)
     .maybeSingle();
   type OwnerRow = { tenant_id: string; tenants: { owner_user_id: string } };
-  const owner = (conv as unknown as OwnerRow | null)?.tenants?.owner_user_id;
-  if (!conv || owner !== user.id) {
+  const ownerRow = conv as unknown as OwnerRow | null;
+  if (!ownerRow) {
     return NextResponse.json(
       { error: "conversation not found" },
       { status: 404 },
     );
+  }
+  if (ownerRow.tenants.owner_user_id !== user.id) {
+    const { data: agentRow } = await service
+      .from("support_agents")
+      .select("id")
+      .eq("business_id", ownerRow.tenant_id)
+      .eq("user_id", user.id)
+      .is("archived_at", null)
+      .not("accepted_at", "is", null)
+      .maybeSingle();
+    if (!agentRow) {
+      return NextResponse.json(
+        { error: "conversation not found" },
+        { status: 404 },
+      );
+    }
   }
 
   let formData: FormData;
@@ -81,7 +97,7 @@ export async function POST(
     const fromMime = file.type.split("/")[1] || "bin";
     return fromMime.toLowerCase();
   })();
-  const path = `${conv.tenant_id}/${conversationId}/${randomUUID()}.${ext}`;
+  const path = `${ownerRow.tenant_id}/${conversationId}/${randomUUID()}.${ext}`;
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const { error: upErr } = await service.storage

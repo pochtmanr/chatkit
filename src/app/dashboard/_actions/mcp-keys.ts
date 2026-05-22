@@ -24,7 +24,7 @@ export async function createMcpKey(input: {
 
   const businessId = await activeBusinessId();
   if (!businessId) return { ok: false, error: "no active business" };
-  const guard = await requireRole(businessId, "admin");
+  const guard = await requireRole(businessId, "manager");
   if (!guard.ok) return guard;
 
   const { raw, prefix } = generateKey();
@@ -53,7 +53,7 @@ export async function createMcpKey(input: {
 export async function revokeMcpKey(keyId: string): Promise<ActionResult> {
   const businessId = await activeBusinessId();
   if (!businessId) return { ok: false, error: "no active business" };
-  const guard = await requireRole(businessId, "admin");
+  const guard = await requireRole(businessId, "manager");
   if (!guard.ok) return guard;
 
   const admin = getServiceClient();

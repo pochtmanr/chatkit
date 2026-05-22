@@ -14,6 +14,61 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_sessions: {
+        Row: {
+          business_id: string
+          created_at: string
+          ended_at: string | null
+          ended_reason: string | null
+          id: string
+          started_at: string
+          status: string
+          support_agent_id: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          ended_at?: string | null
+          ended_reason?: string | null
+          id?: string
+          started_at?: string
+          status?: string
+          support_agent_id: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          ended_at?: string | null
+          ended_reason?: string | null
+          id?: string
+          started_at?: string
+          status?: string
+          support_agent_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_sessions_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_sessions_support_agent_id_fkey"
+            columns: ["support_agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_presence_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_sessions_support_agent_id_fkey"
+            columns: ["support_agent_id"]
+            isOneToOne: false
+            referencedRelation: "support_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       billing_events: {
         Row: {
           business_id: string | null
@@ -303,8 +358,70 @@ export type Database = {
           },
         ]
       }
+      conversation_start_options: {
+        Row: {
+          business_id: string
+          created_at: string
+          description: string | null
+          icon: string
+          id: string
+          inbox_id: string
+          is_active: boolean
+          kind: string
+          label: string
+          required_skills: string[]
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          description?: string | null
+          icon?: string
+          id?: string
+          inbox_id: string
+          is_active?: boolean
+          kind: string
+          label: string
+          required_skills?: string[]
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          description?: string | null
+          icon?: string
+          id?: string
+          inbox_id?: string
+          is_active?: boolean
+          kind?: string
+          label?: string
+          required_skills?: string[]
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_start_options_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_start_options_inbox_id_fkey"
+            columns: ["inbox_id"]
+            isOneToOne: false
+            referencedRelation: "inboxes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
+          assigned_at: string | null
+          assigned_to: string | null
           created_at: string
           external_ref: string | null
           id: string
@@ -312,7 +429,10 @@ export type Database = {
           kind: string
           last_at: string | null
           last_message: string | null
+          last_outbound_at: string | null
           participants: string[]
+          reassign_after: string | null
+          start_option_id: string | null
           status: string
           status_updated_at: string
           tenant_id: string
@@ -320,6 +440,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          assigned_at?: string | null
+          assigned_to?: string | null
           created_at?: string
           external_ref?: string | null
           id?: string
@@ -327,7 +449,10 @@ export type Database = {
           kind: string
           last_at?: string | null
           last_message?: string | null
+          last_outbound_at?: string | null
           participants?: string[]
+          reassign_after?: string | null
+          start_option_id?: string | null
           status?: string
           status_updated_at?: string
           tenant_id: string
@@ -335,6 +460,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          assigned_at?: string | null
+          assigned_to?: string | null
           created_at?: string
           external_ref?: string | null
           id?: string
@@ -342,7 +469,10 @@ export type Database = {
           kind?: string
           last_at?: string | null
           last_message?: string | null
+          last_outbound_at?: string | null
           participants?: string[]
+          reassign_after?: string | null
+          start_option_id?: string | null
           status?: string
           status_updated_at?: string
           tenant_id?: string
@@ -355,6 +485,13 @@ export type Database = {
             columns: ["inbox_id"]
             isOneToOne: false
             referencedRelation: "inboxes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_start_option_id_fkey"
+            columns: ["start_option_id"]
+            isOneToOne: false
+            referencedRelation: "conversation_start_options"
             referencedColumns: ["id"]
           },
           {
@@ -519,43 +656,73 @@ export type Database = {
           api_key: string
           archived_at: string | null
           audience: string
+          auth_mode: string
           business_id: string
           created_at: string
           id: string
           name: string
           project_id: string
           purpose: string
+          server_secret_hash: string | null
+          server_secret_previous_hash: string | null
+          server_secret_rotated_at: string | null
           slug: string
           updated_at: string
+          webhook_events: string[]
+          webhook_secret: string | null
+          webhook_secret_previous: string | null
+          webhook_secret_rotated_at: string | null
           webhook_url: string | null
+          widget_signing_secret: string
+          widget_signing_secret_previous: string | null
         }
         Insert: {
           api_key: string
           archived_at?: string | null
           audience: string
+          auth_mode?: string
           business_id: string
           created_at?: string
           id?: string
           name: string
           project_id: string
           purpose: string
+          server_secret_hash?: string | null
+          server_secret_previous_hash?: string | null
+          server_secret_rotated_at?: string | null
           slug: string
           updated_at?: string
+          webhook_events?: string[]
+          webhook_secret?: string | null
+          webhook_secret_previous?: string | null
+          webhook_secret_rotated_at?: string | null
           webhook_url?: string | null
+          widget_signing_secret?: string
+          widget_signing_secret_previous?: string | null
         }
         Update: {
           api_key?: string
           archived_at?: string | null
           audience?: string
+          auth_mode?: string
           business_id?: string
           created_at?: string
           id?: string
           name?: string
           project_id?: string
           purpose?: string
+          server_secret_hash?: string | null
+          server_secret_previous_hash?: string | null
+          server_secret_rotated_at?: string | null
           slug?: string
           updated_at?: string
+          webhook_events?: string[]
+          webhook_secret?: string | null
+          webhook_secret_previous?: string | null
+          webhook_secret_rotated_at?: string | null
           webhook_url?: string | null
+          widget_signing_secret?: string
+          widget_signing_secret_previous?: string | null
         }
         Relationships: [
           {
@@ -570,6 +737,56 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invitations: {
+        Row: {
+          accepted_at: string | null
+          business_id: string
+          created_at: string
+          display_name: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string
+          revoked_at: string | null
+          role: string
+          token_hash: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          business_id: string
+          created_at?: string
+          display_name: string
+          email: string
+          expires_at: string
+          id?: string
+          invited_by: string
+          revoked_at?: string | null
+          role?: string
+          token_hash: string
+        }
+        Update: {
+          accepted_at?: string | null
+          business_id?: string
+          created_at?: string
+          display_name?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string
+          revoked_at?: string | null
+          role?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invitations_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
             referencedColumns: ["id"]
           },
         ]
@@ -739,6 +956,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "unassigned_or_stale_view"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "messages_reply_to_fkey"
             columns: ["reply_to"]
             isOneToOne: false
@@ -750,6 +974,64 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pending_webhooks: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          event_kind: string
+          id: string
+          inbox_id: string
+          last_error: string | null
+          payload: Json
+          retry_count: number
+          sent_at: string | null
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          event_kind: string
+          id?: string
+          inbox_id: string
+          last_error?: string | null
+          payload: Json
+          retry_count?: number
+          sent_at?: string | null
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          event_kind?: string
+          id?: string
+          inbox_id?: string
+          last_error?: string | null
+          payload?: Json
+          retry_count?: number
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_webhooks_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_webhooks_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "unassigned_or_stale_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_webhooks_inbox_id_fkey"
+            columns: ["inbox_id"]
+            isOneToOne: false
+            referencedRelation: "inboxes"
             referencedColumns: ["id"]
           },
         ]
@@ -918,12 +1200,75 @@ export type Database = {
           },
         ]
       }
+      support_agents: {
+        Row: {
+          accepted_at: string | null
+          archived_at: string | null
+          avatar_url: string | null
+          business_id: string
+          created_at: string
+          display_name: string
+          id: string
+          invited_at: string
+          invited_by: string | null
+          last_assigned_at: string | null
+          role: string
+          skills: string[]
+          status: string
+          status_changed_at: string
+          user_id: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          archived_at?: string | null
+          avatar_url?: string | null
+          business_id: string
+          created_at?: string
+          display_name: string
+          id?: string
+          invited_at?: string
+          invited_by?: string | null
+          last_assigned_at?: string | null
+          role?: string
+          skills?: string[]
+          status?: string
+          status_changed_at?: string
+          user_id: string
+        }
+        Update: {
+          accepted_at?: string | null
+          archived_at?: string | null
+          avatar_url?: string | null
+          business_id?: string
+          created_at?: string
+          display_name?: string
+          id?: string
+          invited_at?: string
+          invited_by?: string | null
+          last_assigned_at?: string | null
+          role?: string
+          skills?: string[]
+          status?: string
+          status_changed_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_agents_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       webhook_deliveries: {
         Row: {
           attempted_at: string
           completed_at: string | null
           error: string | null
           event: string
+          event_kind: string | null
           id: string
           payload: Json
           response_body: string | null
@@ -937,6 +1282,7 @@ export type Database = {
           completed_at?: string | null
           error?: string | null
           event: string
+          event_kind?: string | null
           id?: string
           payload: Json
           response_body?: string | null
@@ -950,6 +1296,7 @@ export type Database = {
           completed_at?: string | null
           error?: string | null
           event?: string
+          event_kind?: string | null
           id?: string
           payload?: Json
           response_body?: string | null
@@ -968,11 +1315,181 @@ export type Database = {
           },
         ]
       }
+      widget_config: {
+        Row: {
+          bubble_style: string
+          business_id: string
+          button_style: string
+          greeting_message: string | null
+          launcher_icon_preset: string | null
+          launcher_icon_url: string | null
+          primary_color: string
+          roundness: string
+          updated_at: string
+        }
+        Insert: {
+          bubble_style?: string
+          business_id: string
+          button_style?: string
+          greeting_message?: string | null
+          launcher_icon_preset?: string | null
+          launcher_icon_url?: string | null
+          primary_color?: string
+          roundness?: string
+          updated_at?: string
+        }
+        Update: {
+          bubble_style?: string
+          business_id?: string
+          button_style?: string
+          greeting_message?: string | null
+          launcher_icon_preset?: string | null
+          launcher_icon_url?: string | null
+          primary_color?: string
+          roundness?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "widget_config_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: true
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
-      [_ in never]: never
+      agent_presence_view: {
+        Row: {
+          avatar_url: string | null
+          business_id: string | null
+          display_name: string | null
+          effective_status: string | null
+          id: string | null
+          last_assigned_at: string | null
+          role: string | null
+          status: string | null
+          status_changed_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          business_id?: string | null
+          display_name?: string | null
+          effective_status?: never
+          id?: string | null
+          last_assigned_at?: string | null
+          role?: string | null
+          status?: string | null
+          status_changed_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          business_id?: string | null
+          display_name?: string | null
+          effective_status?: never
+          id?: string | null
+          last_assigned_at?: string | null
+          role?: string | null
+          status?: string | null
+          status_changed_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_agents_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      unassigned_or_stale_view: {
+        Row: {
+          assigned_at: string | null
+          assigned_to: string | null
+          created_at: string | null
+          external_ref: string | null
+          id: string | null
+          inbox_id: string | null
+          kind: string | null
+          last_at: string | null
+          last_message: string | null
+          last_outbound_at: string | null
+          participants: string[] | null
+          reassign_after: string | null
+          status: string | null
+          status_updated_at: string | null
+          tenant_id: string | null
+          transferred_note: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_to?: string | null
+          created_at?: string | null
+          external_ref?: string | null
+          id?: string | null
+          inbox_id?: string | null
+          kind?: string | null
+          last_at?: string | null
+          last_message?: string | null
+          last_outbound_at?: string | null
+          participants?: string[] | null
+          reassign_after?: string | null
+          status?: string | null
+          status_updated_at?: string | null
+          tenant_id?: string | null
+          transferred_note?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_to?: string | null
+          created_at?: string | null
+          external_ref?: string | null
+          id?: string | null
+          inbox_id?: string | null
+          kind?: string | null
+          last_at?: string | null
+          last_message?: string | null
+          last_outbound_at?: string | null
+          participants?: string[] | null
+          reassign_after?: string | null
+          status?: string | null
+          status_updated_at?: string | null
+          tenant_id?: string | null
+          transferred_note?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_inbox_id_fkey"
+            columns: ["inbox_id"]
+            isOneToOne: false
+            referencedRelation: "inboxes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      assign_conversation: { Args: { conv_id: string }; Returns: string }
+      tg_enqueue_assignment_webhook: {
+        Args: { p_conversation_id: string; p_new: string; p_previous: string }
+        Returns: undefined
+      }
       user_owns_business: { Args: { b: string }; Returns: boolean }
       user_owns_inbox: { Args: { i: string }; Returns: boolean }
     }

@@ -5,15 +5,35 @@ serves three audiences:
 
 - **Tenant admins** — sign in at `/dashboard`, run businesses,
   inboxes, agents, billing, and a real MCP server.
-- **Visitors on customer sites** — an iframe FAB at `/embed/widget`
-  drops on any host page and starts an anonymous support
-  conversation.
-- **Partner admin panels** — an iframe at `/embed/inbox` lets a
-  customer's own admin tool show the inbox without rebuilding it.
+- **Authenticated end-users on customer sites** — an iframe at
+  `/embed/customer` mounts after the host backend mints a widget
+  JWT and renders the iframe with the token.
+- **Partner admin panels** — `/embed/inbox` is the round-6 surface
+  (currently a 501 stub) for embedding the agent inbox inside a
+  customer's own admin tool.
 
 Stack: Next.js 16.2.6 (App Router) · React 19 · Supabase
 (auth + Postgres + Storage + Realtime) · argon2 for key hashing ·
 Tailwind 4 · Revolut for billing.
+
+## Round 5: Authenticated widget
+
+Round 5 split the legacy `pk_live_`-only widget into two surfaces and
+introduced a real end-user identity. The host backend now holds an
+`sk_live_…` server secret, mints a short-lived HS256 JWT per user
+via `POST /api/v1/widget-tokens`, and renders the iframe at
+`/embed/customer?key=<pk_live>&token=<JWT>`. The bridge between
+host page and iframe uses a per-page nonce on every postMessage so
+foreign-origin messages are silently dropped. Full brief and
+prompt-by-prompt log: [`prompts/round-5/README.md`](prompts/round-5/README.md).
+
+> **Migration:** Legacy callers that passed only `pk_live_…` to
+> `/embed/widget` must now mint a JWT and call `/embed/customer`.
+> The old route 308-redirects for one minor version, then disappears
+> in round 7. Step-by-step instructions for hosts:
+> **`/dashboard/docs/install`** in any running dashboard, or
+> [`prompts/round-5/examples/greenflagged-integration.md`](prompts/round-5/examples/greenflagged-integration.md)
+> for a working end-to-end example.
 
 ## Architecture
 
@@ -30,9 +50,11 @@ host site ──iframe──▶ /embed/widget?key=pk_live_…
                                        Origin allowlist)
 ```
 
-Auth boundary for `/embed/*` routes is **API key in `?key=` + Origin
-in `EMBED_ALLOWED_ORIGINS`**. Anyone holding the key can read the
-inbox the key belongs to — treat it like a password.
+Auth boundary for `/embed/customer/*` (round 5) is **`?key=pk_live_…`
++ `?token=<widget JWT>` + the host origin in the per-business
+`allowed_origins` allowlist**. The publishable key only identifies
+the inbox; reads and writes are scoped to the JWT's `sub`. Legacy
+`/embed/widget` callers must migrate — see "Round 5" above.
 
 Auth boundary for `/dashboard/*` is **Supabase session cookies**.
 Auth boundary for `/api/v1/*` is **per-inbox Bearer token**.
@@ -58,7 +80,6 @@ at runtime.
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key. Public. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Bypasses RLS. **Never** ship to browser. |
 | `NEXT_PUBLIC_SITE_URL` | Origin override for auth redirects. |
-| `EMBED_ALLOWED_ORIGINS` | Comma-separated origins allowed to iframe `/embed/*`. |
 | `NEXT_PUBLIC_TINYCHAT_SUPPORT_KEY` | Embed key the marketing `/support` page uses to self-host the widget. |
 | `POSTGRES_URL` / `POSTGRES_PRISMA_URL` | Direct DB connections for migrations + scripts. |
 | `REVOLUT_SECRET_KEY` / `REVOLUT_WEBHOOK_SECRET` / `REVOLUT_ENVIRONMENT` | Revolut Merchant API + webhook verification. |
@@ -104,9 +125,12 @@ into the iframe. The widget resolves the ref and opens that thread.
 
 The widget enforces:
 - the `?key=` value is a known tenant API key (Supabase lookup);
-- the `Origin`/`Referer` header is in `EMBED_ALLOWED_ORIGINS`.
+- the host origin is in the parent business's `allowed_origins`
+  allowlist (managed under **Settings → Business**).
 
-Both must pass or the iframe returns an auth error.
+Both must pass or the iframe returns an auth error. Round 5 adds a
+third check: a widget JWT in `?token=…` that identifies the end
+user (see "Round 5" at the top of this README).
 
 ## Embedding the inbox iframe in a partner admin
 

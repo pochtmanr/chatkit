@@ -24,7 +24,7 @@ export default async function SettingsMcpPage() {
         lastUsedAt: k.last_used_at,
         revokedAt: k.revoked_at,
       }))}
-      canManage={role === "owner" || role === "admin"}
+      canManage={role === "owner" || role === "manager"}
     />
   );
 }

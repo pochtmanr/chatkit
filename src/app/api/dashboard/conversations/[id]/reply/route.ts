@@ -79,9 +79,27 @@ export async function POST(
     participants: string[] | null;
     tenants: { owner_user_id: string };
   };
-  const owner = (conv as unknown as OwnerRow | null)?.tenants?.owner_user_id;
-  if (!conv || owner !== user.id) {
+  const ownerRow = conv as unknown as OwnerRow | null;
+  if (!ownerRow) {
     return NextResponse.json({ error: "conversation not found" }, { status: 404 });
+  }
+  if (ownerRow.tenants.owner_user_id !== user.id) {
+    // Owners pass via the tenant check above; accepted agents pass via
+    // a support_agents row scoped to the same business.
+    const { data: agentRow } = await service
+      .from("support_agents")
+      .select("id")
+      .eq("business_id", ownerRow.tenant_id)
+      .eq("user_id", user.id)
+      .is("archived_at", null)
+      .not("accepted_at", "is", null)
+      .maybeSingle();
+    if (!agentRow) {
+      return NextResponse.json(
+        { error: "conversation not found" },
+        { status: 404 },
+      );
+    }
   }
 
   const senderId = `${AGENT_SENDER_ID_PREFIX}${user.id}`;
@@ -89,7 +107,7 @@ export async function POST(
   const { data: message, error: insErr } = await service
     .from("messages")
     .insert({
-      tenant_id: conv.tenant_id,
+      tenant_id: ownerRow.tenant_id,
       conversation_id: conversationId,
       sender_id: senderId,
       receiver_id: null,
@@ -132,7 +150,7 @@ export async function POST(
   }
 
   // Fire tenant-configured webhook (generic fan-out).
-  fireTenantWebhook(conv.tenant_id, {
+  fireTenantWebhook(ownerRow.tenant_id, {
     conversationId,
     senderId,
     body: body || null,

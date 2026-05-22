@@ -153,7 +153,7 @@ export default async function InboxPage({
             &apos;s API key.
           </p>
           <Link
-            href="/dashboard/api-keys"
+            href="/dashboard/settings/api-keys"
             className="inline-block mt-2 text-[13px] font-medium text-deep underline hover:text-ink transition-colors"
           >
             Get the API key

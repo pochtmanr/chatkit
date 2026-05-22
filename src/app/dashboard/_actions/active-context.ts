@@ -2,7 +2,7 @@
 
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { getServerClient } from "@/lib/supabase/server";
+import { getServerClient, getServiceClient } from "@/lib/supabase/server";
 
 const BIZ_COOKIE = "chatkit_active_biz";
 const INBOX_COOKIE = "chatkit_active_inbox";
@@ -25,14 +25,30 @@ export async function setActiveBusiness(businessId: string): Promise<ActionResul
   } = await sb.auth.getUser();
   if (!user) return { ok: false, error: "not signed in" };
 
-  const { data: business } = await sb
+  // The dashboard's RLS-scoped read covers owners; agents are out of
+  // its policy, so fall through to the service client and validate via
+  // the support_agents membership.
+  const admin = getServiceClient();
+  const { data: business } = await admin
     .from("businesses")
-    .select("id")
+    .select("id, owner_user_id")
     .eq("id", businessId)
     .maybeSingle();
   if (!business) return { ok: false, error: "business not found" };
 
-  const { data: firstInbox } = await sb
+  if (business.owner_user_id !== user.id) {
+    const { data: agentRow } = await admin
+      .from("support_agents")
+      .select("id")
+      .eq("business_id", businessId)
+      .eq("user_id", user.id)
+      .is("archived_at", null)
+      .not("accepted_at", "is", null)
+      .maybeSingle();
+    if (!agentRow) return { ok: false, error: "forbidden" };
+  }
+
+  const { data: firstInbox } = await admin
     .from("inboxes")
     .select("id")
     .eq("business_id", businessId)
@@ -45,6 +61,7 @@ export async function setActiveBusiness(businessId: string): Promise<ActionResul
   store.set(BIZ_COOKIE, business.id, COOKIE_OPTS);
   if (firstInbox) store.set(INBOX_COOKIE, firstInbox.id, COOKIE_OPTS);
   revalidatePath("/dashboard", "layout");
+  revalidatePath("/workbench", "layout");
   return { ok: true };
 }
 

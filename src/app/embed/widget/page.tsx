@@ -1,32 +1,18 @@
-import { verifyEmbedKey } from "@/lib/embed-auth";
-import { WidgetShell } from "./WidgetShell";
+import { permanentRedirect } from "next/navigation";
 
-/**
- * Self-contained chat widget — FAB + collapsible panel + inbox + thread.
- *
- * Host page embeds this as an iframe. When the user clicks the FAB the
- * iframe posts a `chat-admin:widget` message; the host listens and
- * resizes the iframe to show the panel. When closed, iframe collapses
- * back to FAB-sized so the rest of the host page is unobstructed.
- *
- * Auth + tenant scoping handled exactly the same way as /embed/inbox
- * — tenant API key in `?key=` + Origin/Referer allowlist.
- */
-export default async function WidgetPage({
+// Round 5 renamed the customer surface to /embed/customer. This file is
+// a 308 tombstone so production embeds keep working until prompt 6's
+// loader script ships the new URL. Delete at the start of round 7.
+export default async function LegacyWidgetRedirect({
   searchParams,
 }: {
-  searchParams: Promise<{ key?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { key } = await searchParams;
-  try {
-    await verifyEmbedKey(key);
-  } catch (err) {
-    return (
-      <div className="min-h-dvh flex items-center justify-center bg-white p-4 text-xs text-red-600">
-        Auth failed: {err instanceof Error ? err.message : "invalid"}
-      </div>
-    );
+  const sp = await searchParams;
+  const usp = new URLSearchParams();
+  for (const [k, v] of Object.entries(sp)) {
+    if (typeof v === "string") usp.set(k, v);
   }
-
-  return <WidgetShell apiKey={key!} />;
+  const qs = usp.toString();
+  permanentRedirect(qs ? `/embed/customer?${qs}` : "/embed/customer");
 }

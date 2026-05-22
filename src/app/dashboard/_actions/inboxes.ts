@@ -39,7 +39,7 @@ export async function rotateInboxApiKey(
     .eq("id", inboxId);
   if (error) return { ok: false, error: error.message };
 
-  revalidatePath("/dashboard/api-keys");
+  revalidatePath("/dashboard/settings/api-keys");
   return { ok: true, apiKey };
 }
 

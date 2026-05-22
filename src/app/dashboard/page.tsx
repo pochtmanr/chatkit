@@ -196,26 +196,38 @@ export default async function UsagePage() {
         <h2 className="text-[18px] font-medium text-ink">Getting started</h2>
         <ol className="space-y-3 text-[14px] text-deep/80 list-decimal pl-5 marker:text-deep/40">
           <li>
-            Grab the API key for{" "}
+            Grab the publishable and server keys for{" "}
             <span className="font-medium text-ink">{ctx.inbox.name}</span> from{" "}
             <Link
-              href="/dashboard/api-keys"
+              href="/dashboard/settings/api-keys"
               className="text-deep underline hover:text-ink"
             >
               API keys
             </Link>
+            . The <code className="font-mono text-[12px]">sk_live_…</code> is
+            shown once — copy it straight to your backend env.
+          </li>
+          <li>
+            Mint a widget token from your backend via{" "}
+            <code className="font-mono text-[12px]">
+              POST /api/v1/widget-tokens
+            </code>
+            . Walkthrough in{" "}
+            <Link
+              href="/dashboard/docs/install"
+              className="text-deep underline hover:text-ink"
+            >
+              Docs → Install
+            </Link>
             .
           </li>
           <li>
-            Install the SDK:{" "}
-            <code className="rounded-md bg-mist/60 px-1.5 py-0.5 text-[13px] font-mono text-ink">
-              npm install @holylabs/chat-sdk-web
+            Embed{" "}
+            <code className="font-mono text-[12px]">
+              /embed/customer?key=…&token=…
             </code>{" "}
-            (or the RN package for mobile).
-          </li>
-          <li>
-            Point the SDK at the inbox key. The widget appears wherever you
-            mount it.
+            and post the <code className="font-mono text-[12px]">init</code>{" "}
+            handshake. A drop-in React provider lands in v0.6.
           </li>
           <li>
             Wire a webhook for{" "}

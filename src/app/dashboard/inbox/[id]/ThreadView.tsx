@@ -21,13 +21,6 @@ interface ThreadViewProps {
    *  sender_id = "agent-<currentUserId>"; we check the prefix + id. */
   currentUserId: string;
   initialMessages: DbMessage[];
-  /** Endpoint to POST replies to. Defaults to the dashboard's session-
-   *  authed reply route. Embed mode overrides to the JWT-authed
-   *  endpoint and supplies a bearer token. */
-  replyEndpoint?: string;
-  /** Optional bearer token sent in the Authorization header on every
-   *  reply POST. Embed mode uses this. */
-  replyAuthToken?: string;
 }
 
 const AGENT_SENDER_ID_PREFIX = "agent-";
@@ -45,12 +38,9 @@ export function ThreadView({
   conversationId,
   currentUserId,
   initialMessages,
-  replyEndpoint,
-  replyAuthToken,
 }: ThreadViewProps) {
   const router = useRouter();
-  const endpoint =
-    replyEndpoint ?? `/api/dashboard/conversations/${conversationId}/reply`;
+  const endpoint = `/api/dashboard/conversations/${conversationId}/reply`;
   const [messages, setMessages] = useState<DbMessage[]>(initialMessages);
   const [text, setText] = useState("");
   const [isSending, setSending] = useState(false);
@@ -104,15 +94,9 @@ export function ThreadView({
     setSending(true);
     setError(null);
     try {
-      const headers: Record<string, string> = {
-        "content-type": "application/json",
-      };
-      if (replyAuthToken) {
-        headers.authorization = `Bearer ${replyAuthToken}`;
-      }
       const res = await fetch(endpoint, {
         method: "POST",
-        headers,
+        headers: { "content-type": "application/json" },
         body: JSON.stringify({ body }),
       });
       if (!res.ok) {
@@ -129,28 +113,19 @@ export function ThreadView({
     } finally {
       setSending(false);
     }
-  }, [endpoint, isSending, replyAuthToken, text]);
+  }, [endpoint, isSending, text]);
 
-  /** Upload an image + send it as image-type message. Picks the right
-   *  upload endpoint: embed mode talks to /api/embed/.../upload with
-   *  the bearer token; dashboard mode uses /api/dashboard/.../upload
-   *  authed by the session. */
   const sendImage = useCallback(
     async (file: File) => {
       if (isUploading) return;
       setUploading(true);
       setError(null);
       try {
-        const uploadEndpoint = replyAuthToken
-          ? `/api/embed/conversations/${conversationId}/upload`
-          : `/api/dashboard/conversations/${conversationId}/upload`;
+        const uploadEndpoint = `/api/dashboard/conversations/${conversationId}/upload`;
         const fd = new FormData();
         fd.append("file", file);
-        const upHeaders: Record<string, string> = {};
-        if (replyAuthToken) upHeaders.authorization = `Bearer ${replyAuthToken}`;
         const upRes = await fetch(uploadEndpoint, {
           method: "POST",
-          headers: upHeaders,
           body: fd,
         });
         if (!upRes.ok) {
@@ -159,13 +134,9 @@ export function ThreadView({
         }
         const { url } = (await upRes.json()) as { url: string };
 
-        const headers: Record<string, string> = {
-          "content-type": "application/json",
-        };
-        if (replyAuthToken) headers.authorization = `Bearer ${replyAuthToken}`;
         const sendRes = await fetch(endpoint, {
           method: "POST",
-          headers,
+          headers: { "content-type": "application/json" },
           body: JSON.stringify({
             media_url: url,
             message_type: "image",
@@ -185,7 +156,7 @@ export function ThreadView({
         setUploading(false);
       }
     },
-    [conversationId, endpoint, isUploading, replyAuthToken],
+    [conversationId, endpoint, isUploading],
   );
 
   const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {

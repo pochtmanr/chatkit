@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { getServerClient } from "@/lib/supabase/server";
+import { resolvePostLoginPath } from "@/lib/post-login-landing";
 
 /** Resolve the public site origin (used to build OAuth redirect URLs).
  *  Prefers NEXT_PUBLIC_SITE_URL; falls back to the request's Host header
@@ -48,14 +49,16 @@ export async function signUpAction(formData: FormData) {
 export async function loginAction(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  const next = String(formData.get("next") ?? "/dashboard");
+  const explicitNext = String(formData.get("next") ?? "").trim();
 
   const supabase = await getServerClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { ok: false as const, error: error.message };
 
   revalidatePath("/", "layout");
-  redirect(next);
+  const landing =
+    explicitNext || (data.user ? await resolvePostLoginPath(data.user.id) : "/dashboard");
+  redirect(landing);
 }
 
 export async function logoutAction() {

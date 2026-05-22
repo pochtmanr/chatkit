@@ -11,8 +11,8 @@ import { getServiceClient } from "@/lib/supabase/server";
  * the public URL; caller then POSTs the message with media_url +
  * message_type='image'.
  *
- * Mirrors /api/embed/conversations/:id/upload — same bucket, same
- * limits, just different auth.
+ * Mirrors /api/embed/customer/conversations/:id/upload — same bucket,
+ * same limits, just different auth.
  */
 
 const BUCKET = "chat";

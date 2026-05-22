@@ -1,7 +1,8 @@
 "use server";
 
 import { unstable_cache as nextCache } from "next/cache";
-import { getServerClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/server";
+import { requireActiveContext } from "@/lib/active-context";
 
 export type StatsRange = "7d" | "30d" | "90d" | "all";
 
@@ -25,10 +26,18 @@ export async function getBusinessStats(
   businessId: string,
   range: StatsRange,
 ): Promise<BusinessStats> {
+  // Auth boundary stays outside the cache: cookies() can't be read inside
+  // unstable_cache in Next 16. Validate the caller has access to this
+  // businessId here, then the cached fetcher uses the service client.
+  const ctx = await requireActiveContext();
+  if (!ctx.businesses.some((b) => b.id === businessId)) {
+    throw new Error("Forbidden");
+  }
+
   const since = sinceFor(range);
   const fetcher = nextCache(
     async (bid: string, sinceIso: string | null) => {
-      const sb = await getServerClient();
+      const sb = getServiceClient();
       return computeStats(sb, bid, sinceIso);
     },
     [`business-stats:${businessId}:${range}`],
@@ -44,7 +53,7 @@ function sinceFor(range: StatsRange): Date | null {
 }
 
 async function computeStats(
-  sb: Awaited<ReturnType<typeof getServerClient>>,
+  sb: ReturnType<typeof getServiceClient>,
   businessId: string,
   sinceIso: string | null,
 ): Promise<BusinessStats> {
